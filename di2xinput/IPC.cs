@@ -17,9 +17,9 @@ namespace di2xinput
         private static IntPtr fileHandle = IntPtr.Zero;
         private static uint fileSize = 0;
 
-        public static void Init()
+        public static void Init(uint fileSize)
         {
-            fileSize = (uint)(Marshal.SizeOf(typeof(Mapping.MappingConfig)) * 24) + 4;
+            IPC.fileSize = fileSize;
             fileHandle = WinAPI.CreateFileMapping(new IntPtr(-1), IntPtr.Zero, WinAPI.FileMapProtection.PageReadWrite, 0, fileSize, sharedMemoryFile);
 
             if (fileHandle == IntPtr.Zero)
@@ -36,7 +36,7 @@ namespace di2xinput
             ms.Write(BitConverter.GetBytes(fileSize - 4), 0, 4);
             ms.Write(bytes, 0, bytes.Length);
 
-            byte[] data = ms.GetBuffer().Take((int)ms.Length).ToArray();
+            byte[] data = ms.ToArray();
 
             IntPtr map = WinAPI.MapViewOfFile(fileHandle, WinAPI.FileMapAccess.FileMapAllAccess, 0, 0, new UIntPtr((uint)bytes.Length));
             Marshal.Copy(data, 0, map, data.Length);

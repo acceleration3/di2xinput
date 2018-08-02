@@ -66,10 +66,7 @@ namespace di2xinput
             if ((mapping & 1) == 1 && (mapping & 2) == 2)
             {
                 int index = (mapping & 0x3C) >> 2;
-                int coord = (mapping & 0xC0) >> 6;
-                string[] coords = new string[] { "X", "Y", "Z" };
-
-                return "Axis " + index + " " + coords[coord];
+                return "Axis " + index;
             }
             else if((mapping & 2) == 2)
             {
@@ -98,8 +95,7 @@ namespace di2xinput
             {
                 if (state.Buttons[i])
                 {
-                    mapping = (ushort)(mapping | 1);
-                    mapping = (ushort)(mapping | (i << 2)); 
+                    mapping = (ushort)((mapping | 1) | (mapping | (i << 2))); 
                     return mapping;
                 }
             }
@@ -109,54 +105,23 @@ namespace di2xinput
                 if (state.PointOfViewControllers[i] != -1)
                 {
                     ushort degrees = (ushort)(state.PointOfViewControllers[i] / 100);
-                    mapping = (ushort)(mapping | 2);
-                    mapping = (ushort)(mapping | (i << 2));
-                    mapping = (ushort)(mapping | (degrees << 6));
+                    mapping = (ushort)((mapping | 2) | (i << 2) | (degrees << 6));
                     return mapping;
                 }
             }
 
-            if (state.X != 0)
+            Func<ushort, ushort> axisMapping = (index) => 
             {
-                mapping = (ushort)(mapping | 3);
-                mapping = (ushort)(mapping | (0 << 2));
-                mapping = (ushort)(mapping | (0 << 6));
-            }
+                return (ushort)((mapping | 3) | (index << 2));
+            };
 
-            if (state.Y != 0)
-            {
-                mapping = (ushort)(mapping | 3);
-                mapping = (ushort)(mapping | (0 << 2));
-                mapping = (ushort)(mapping | (1 << 6));
-            }
-
-            if (state.Z != 0)
-            {
-                mapping = (ushort)(mapping | 3);
-                mapping = (ushort)(mapping | (0 << 2));
-                mapping = (ushort)(mapping | (2 << 6));
-            }
-
-            if (state.RotationX != 0)
-            {
-                mapping = (ushort)(mapping | 3);
-                mapping = (ushort)(mapping | (1 << 2));
-                mapping = (ushort)(mapping | (0 << 6));
-            }
-
-            if (state.RotationY != 0)
-            {
-                mapping = (ushort)(mapping | 3);
-                mapping = (ushort)(mapping | (1 << 2));
-                mapping = (ushort)(mapping | (1 << 6));
-            }
-
-            if (state.RotationZ != 0)
-            {
-                mapping = (ushort)(mapping | 3);
-                mapping = (ushort)(mapping | (1 << 2));
-                mapping = (ushort)(mapping | (2 << 6));
-            }
+            if (state.X != 0) return axisMapping(0);
+            if (state.Y != 0) return axisMapping(1);
+            if (state.Z != 0) return axisMapping(2);
+            if (state.RotationX != 0) return axisMapping(3);
+            if (state.RotationY != 0) return axisMapping(4);
+            if (state.RotationZ != 0) return axisMapping(5);
+            
 
             return mapping;
         }

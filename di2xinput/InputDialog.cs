@@ -15,7 +15,7 @@ namespace di2xinput
 {
     public partial class InputDialog : Form
     {
-        bool useKeyboard = false;
+        Guid deviceGuid;
         Joystick acquiredJoystick;
 
         public ushort resultScancode;
@@ -49,21 +49,23 @@ namespace di2xinput
             }
         }
 
-        public InputDialog(bool useKeyboard)
+        public InputDialog(Guid deviceGuid)
         {
-            this.useKeyboard = useKeyboard;
             InitializeComponent();
 
-            if(useKeyboard)
+            this.deviceGuid = deviceGuid;
+
+            if (deviceGuid == Guid.Empty)
+            {
                 Application.AddMessageFilter(new KeyProcessor());
+            }
         }
 
         private void InputDialog_Load(object sender, EventArgs e)
         {
-            if(!useKeyboard)
+            if(this.deviceGuid != Guid.Empty)
             {
-                var config = Mapping.configs[Mapping.currentIndex];
-                acquiredJoystick = DIManager.GetJoystickFromID(config.deviceGuid);
+                acquiredJoystick = DIManager.GetJoystickFromID(deviceGuid.ToString());
 
                 acquiredJoystick.Properties.AxisMode = DeviceAxisMode.Absolute;
                 acquiredJoystick.SetCooperativeLevel(this.Handle, (CooperativeLevel.NonExclusive | CooperativeLevel.Background));
@@ -79,8 +81,6 @@ namespace di2xinput
 
         private void inputTimer_Tick(object sender, EventArgs e)
         {
-            var config = Mapping.configs[Mapping.currentIndex];
-
             var joyState = acquiredJoystick.GetCurrentState();
             var joyMapping = DIManager.GetMappingFromState(acquiredJoystick, joyState);
 
@@ -99,13 +99,12 @@ namespace di2xinput
 
         private void InputDialog_FormClosed(object sender, FormClosedEventArgs e)
         {
-            if(!useKeyboard)
+            if (this.deviceGuid != Guid.Empty)
             {
                 acquiredJoystick.Unacquire();
                 inputTimer.Enabled = false;
                 inputTimer.Stop();
             }
-                
         }
     }
 }

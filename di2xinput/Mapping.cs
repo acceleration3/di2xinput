@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace di2xinput
 {
-    static class Mapping
+    public static class Mapping
     {
         public enum MappedDeviceType : byte
         {
@@ -16,7 +16,6 @@ namespace di2xinput
             Controller
         }
 
-        [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public class MappingConfig
         {
             public MappedDeviceType deviceType;
@@ -38,6 +37,8 @@ namespace di2xinput
                 byteArray.AddRange(BitConverter.GetBytes(deviceGuid.Length));
                 byteArray.AddRange(Encoding.ASCII.GetBytes(deviceGuid));
 
+                byteArray.AddRange(BitConverter.GetBytes(mapping.Length));
+
                 for (int i = 0; i < mapping.Length; i++)
                     byteArray.AddRange(BitConverter.GetBytes(mapping[i]));
 
@@ -52,13 +53,6 @@ namespace di2xinput
                     mapping[i] = 0;
             }
         }
-
-        public static int currentIndex = 0;
-
-        public static MappingConfig[] configs = new MappingConfig[]
-        {
-            new MappingConfig(), new MappingConfig(), new MappingConfig(), new MappingConfig()
-        };
 
         public static string GetNameFromScancode(ushort scancode)
         {

@@ -33,9 +33,17 @@
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle6 = new System.Windows.Forms.DataGridViewCellStyle();
             this.label2 = new System.Windows.Forms.Label();
             this.configCombo = new System.Windows.Forms.ComboBox();
-            this.button1 = new System.Windows.Forms.Button();
+            this.btnSave = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.searchMethod = new System.Windows.Forms.TabControl();
+            this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.targetCombo = new System.Windows.Forms.ComboBox();
+            this.label3 = new System.Windows.Forms.Label();
+            this.tabPage2 = new System.Windows.Forms.TabPage();
+            this.label4 = new System.Windows.Forms.Label();
             this.convertGrid = new System.Windows.Forms.DataGridView();
+            this.colXI = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colDI = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.deviceList = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.controllerSelect = new System.Windows.Forms.TabControl();
@@ -43,20 +51,12 @@
             this.controllerTab2 = new System.Windows.Forms.TabPage();
             this.controllerTab3 = new System.Windows.Forms.TabPage();
             this.controllerTab4 = new System.Windows.Forms.TabPage();
-            this.label3 = new System.Windows.Forms.Label();
-            this.targetCombo = new System.Windows.Forms.ComboBox();
-            this.tabControl1 = new System.Windows.Forms.TabControl();
-            this.tabPage1 = new System.Windows.Forms.TabPage();
-            this.tabPage2 = new System.Windows.Forms.TabPage();
-            this.label4 = new System.Windows.Forms.Label();
-            this.colXI = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colDI = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.groupBox1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.convertGrid)).BeginInit();
-            this.controllerSelect.SuspendLayout();
-            this.tabControl1.SuspendLayout();
+            this.searchMethod.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.convertGrid)).BeginInit();
+            this.controllerSelect.SuspendLayout();
             this.SuspendLayout();
             // 
             // label2
@@ -75,19 +75,22 @@
             this.configCombo.Name = "configCombo";
             this.configCombo.Size = new System.Drawing.Size(212, 21);
             this.configCombo.TabIndex = 6;
+            this.configCombo.DropDown += new System.EventHandler(this.configCombo_DropDown);
+            this.configCombo.SelectedIndexChanged += new System.EventHandler(this.configCombo_SelectedIndexChanged);
             // 
-            // button1
+            // btnSave
             // 
-            this.button1.Location = new System.Drawing.Point(305, 11);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(44, 23);
-            this.button1.TabIndex = 7;
-            this.button1.Text = "Save";
-            this.button1.UseVisualStyleBackColor = true;
+            this.btnSave.Location = new System.Drawing.Point(305, 11);
+            this.btnSave.Name = "btnSave";
+            this.btnSave.Size = new System.Drawing.Size(44, 23);
+            this.btnSave.TabIndex = 7;
+            this.btnSave.Text = "Save";
+            this.btnSave.UseVisualStyleBackColor = true;
+            this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.tabControl1);
+            this.groupBox1.Controls.Add(this.searchMethod);
             this.groupBox1.Controls.Add(this.convertGrid);
             this.groupBox1.Controls.Add(this.deviceList);
             this.groupBox1.Controls.Add(this.label1);
@@ -98,6 +101,69 @@
             this.groupBox1.TabIndex = 9;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Settings";
+            // 
+            // searchMethod
+            // 
+            this.searchMethod.Controls.Add(this.tabPage1);
+            this.searchMethod.Controls.Add(this.tabPage2);
+            this.searchMethod.Location = new System.Drawing.Point(6, 19);
+            this.searchMethod.Name = "searchMethod";
+            this.searchMethod.SelectedIndex = 0;
+            this.searchMethod.Size = new System.Drawing.Size(324, 78);
+            this.searchMethod.TabIndex = 12;
+            this.searchMethod.SelectedIndexChanged += new System.EventHandler(this.searchMethod_SelectedIndexChanged);
+            // 
+            // tabPage1
+            // 
+            this.tabPage1.Controls.Add(this.targetCombo);
+            this.tabPage1.Controls.Add(this.label3);
+            this.tabPage1.Location = new System.Drawing.Point(4, 22);
+            this.tabPage1.Name = "tabPage1";
+            this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage1.Size = new System.Drawing.Size(316, 52);
+            this.tabPage1.TabIndex = 0;
+            this.tabPage1.Text = "Single Process";
+            this.tabPage1.UseVisualStyleBackColor = true;
+            // 
+            // targetCombo
+            // 
+            this.targetCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.targetCombo.FormattingEnabled = true;
+            this.targetCombo.Location = new System.Drawing.Point(94, 13);
+            this.targetCombo.Name = "targetCombo";
+            this.targetCombo.Size = new System.Drawing.Size(216, 21);
+            this.targetCombo.TabIndex = 11;
+            this.targetCombo.DropDown += new System.EventHandler(this.targetCombo_DropDown);
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(6, 17);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(82, 13);
+            this.label3.TabIndex = 10;
+            this.label3.Text = "Target Process:";
+            // 
+            // tabPage2
+            // 
+            this.tabPage2.Controls.Add(this.label4);
+            this.tabPage2.Location = new System.Drawing.Point(4, 22);
+            this.tabPage2.Name = "tabPage2";
+            this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage2.Size = new System.Drawing.Size(316, 52);
+            this.tabPage2.TabIndex = 1;
+            this.tabPage2.Text = "Process Watcher";
+            this.tabPage2.UseVisualStyleBackColor = true;
+            // 
+            // label4
+            // 
+            this.label4.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.label4.Location = new System.Drawing.Point(3, 3);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(310, 46);
+            this.label4.TabIndex = 0;
+            this.label4.Text = "Looking for XInput compatible processes...";
+            this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // convertGrid
             // 
@@ -144,6 +210,22 @@
             this.convertGrid.TabIndex = 8;
             this.convertGrid.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.convertGrid_CellClick);
             // 
+            // colXI
+            // 
+            this.colXI.HeaderText = "XBox Button";
+            this.colXI.Name = "colXI";
+            this.colXI.ReadOnly = true;
+            this.colXI.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.colXI.Width = 140;
+            // 
+            // colDI
+            // 
+            this.colDI.HeaderText = "DirectInput Mapping";
+            this.colDI.Name = "colDI";
+            this.colDI.ReadOnly = true;
+            this.colDI.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.colDI.Width = 176;
+            // 
             // deviceList
             // 
             this.deviceList.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
@@ -186,7 +268,7 @@
             this.controllerTab1.Location = new System.Drawing.Point(4, 25);
             this.controllerTab1.Name = "controllerTab1";
             this.controllerTab1.Padding = new System.Windows.Forms.Padding(3);
-            this.controllerTab1.Size = new System.Drawing.Size(302, 0);
+            this.controllerTab1.Size = new System.Drawing.Size(266, 0);
             this.controllerTab1.TabIndex = 1;
             this.controllerTab1.Text = "Controller 1";
             this.controllerTab1.UseVisualStyleBackColor = true;
@@ -195,7 +277,7 @@
             // 
             this.controllerTab2.Location = new System.Drawing.Point(4, 25);
             this.controllerTab2.Name = "controllerTab2";
-            this.controllerTab2.Size = new System.Drawing.Size(302, 0);
+            this.controllerTab2.Size = new System.Drawing.Size(266, 0);
             this.controllerTab2.TabIndex = 2;
             this.controllerTab2.Text = "Controller 2";
             this.controllerTab2.UseVisualStyleBackColor = true;
@@ -204,7 +286,7 @@
             // 
             this.controllerTab3.Location = new System.Drawing.Point(4, 25);
             this.controllerTab3.Name = "controllerTab3";
-            this.controllerTab3.Size = new System.Drawing.Size(302, 0);
+            this.controllerTab3.Size = new System.Drawing.Size(266, 0);
             this.controllerTab3.TabIndex = 3;
             this.controllerTab3.Text = "Controller 3";
             this.controllerTab3.UseVisualStyleBackColor = true;
@@ -218,91 +300,13 @@
             this.controllerTab4.Text = "Controller 4";
             this.controllerTab4.UseVisualStyleBackColor = true;
             // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(6, 17);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(82, 13);
-            this.label3.TabIndex = 10;
-            this.label3.Text = "Target Process:";
-            // 
-            // targetCombo
-            // 
-            this.targetCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.targetCombo.FormattingEnabled = true;
-            this.targetCombo.Location = new System.Drawing.Point(94, 13);
-            this.targetCombo.Name = "targetCombo";
-            this.targetCombo.Size = new System.Drawing.Size(216, 21);
-            this.targetCombo.TabIndex = 11;
-            this.targetCombo.DropDown += new System.EventHandler(this.targetCombo_DropDown);
-            // 
-            // tabControl1
-            // 
-            this.tabControl1.Controls.Add(this.tabPage1);
-            this.tabControl1.Controls.Add(this.tabPage2);
-            this.tabControl1.Location = new System.Drawing.Point(6, 19);
-            this.tabControl1.Name = "tabControl1";
-            this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(324, 78);
-            this.tabControl1.TabIndex = 12;
-            // 
-            // tabPage1
-            // 
-            this.tabPage1.Controls.Add(this.targetCombo);
-            this.tabPage1.Controls.Add(this.label3);
-            this.tabPage1.Location = new System.Drawing.Point(4, 22);
-            this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage1.Size = new System.Drawing.Size(316, 52);
-            this.tabPage1.TabIndex = 0;
-            this.tabPage1.Text = "Single Process";
-            this.tabPage1.UseVisualStyleBackColor = true;
-            // 
-            // tabPage2
-            // 
-            this.tabPage2.Controls.Add(this.label4);
-            this.tabPage2.Location = new System.Drawing.Point(4, 22);
-            this.tabPage2.Name = "tabPage2";
-            this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage2.Size = new System.Drawing.Size(316, 52);
-            this.tabPage2.TabIndex = 1;
-            this.tabPage2.Text = "Process Watcher";
-            this.tabPage2.UseVisualStyleBackColor = true;
-            // 
-            // label4
-            // 
-            this.label4.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.label4.Location = new System.Drawing.Point(3, 3);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(310, 46);
-            this.label4.TabIndex = 0;
-            this.label4.Text = "Looking for XInput compatible processes...";
-            this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // colXI
-            // 
-            this.colXI.HeaderText = "XBox Button";
-            this.colXI.Name = "colXI";
-            this.colXI.ReadOnly = true;
-            this.colXI.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            this.colXI.Width = 140;
-            // 
-            // colDI
-            // 
-            this.colDI.HeaderText = "DirectInput Mapping";
-            this.colDI.Name = "colDI";
-            this.colDI.ReadOnly = true;
-            this.colDI.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            this.colDI.Width = 176;
-            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(361, 496);
             this.Controls.Add(this.groupBox1);
-            this.Controls.Add(this.button1);
+            this.Controls.Add(this.btnSave);
             this.Controls.Add(this.configCombo);
             this.Controls.Add(this.label2);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -313,12 +317,12 @@
             this.Load += new System.EventHandler(this.MainForm_Load);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.convertGrid)).EndInit();
-            this.controllerSelect.ResumeLayout(false);
-            this.tabControl1.ResumeLayout(false);
+            this.searchMethod.ResumeLayout(false);
             this.tabPage1.ResumeLayout(false);
             this.tabPage1.PerformLayout();
             this.tabPage2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.convertGrid)).EndInit();
+            this.controllerSelect.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -327,7 +331,7 @@
         #endregion
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.ComboBox configCombo;
-        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.DataGridView convertGrid;
         private System.Windows.Forms.ComboBox deviceList;
@@ -339,7 +343,7 @@
         private System.Windows.Forms.TabPage controllerTab4;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.ComboBox targetCombo;
-        private System.Windows.Forms.TabControl tabControl1;
+        private System.Windows.Forms.TabControl searchMethod;
         private System.Windows.Forms.TabPage tabPage1;
         private System.Windows.Forms.TabPage tabPage2;
         private System.Windows.Forms.Label label4;

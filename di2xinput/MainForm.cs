@@ -8,7 +8,11 @@ using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml;
+using System.Xml.Serialization;
 using SharpDX.DirectInput;
 
 namespace di2xinput
@@ -17,14 +21,58 @@ namespace di2xinput
     {
         public static InputDialog inputDialog;
 
+        public struct ProgramState
+        {
+            public int mappingIndex;
+            public string selectedConfig;
+        }
+
+        public struct Configuration
+        {
+            public int searchMethod;
+            public string targetProcess;
+            public Mapping.MappingConfig[] mapping;
+        }
+
+        public static ProgramState programState;
+        public static Configuration currentConfig;
+
+        private const string configFolder = "./configs/";
+
         public MainForm()
         {
             InitializeComponent();
         }
 
+        private bool LoadConfig(string config)
+        {
+            if (File.Exists(configFolder + config + ".xml"))
+            {
+                XmlSerializer configSerializer = new XmlSerializer(typeof(Configuration));
+
+                try
+                {
+                    using (TextReader textReader = new StreamReader(configFolder + config + ".xml"))
+                    {
+                        currentConfig = (Configuration)configSerializer.Deserialize(textReader);
+                    }
+
+                    searchMethod.SelectedIndex = currentConfig.searchMethod;
+
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
         private void RefreshActiveController()
         {
-            var config = Mapping.configs[Mapping.currentIndex];
+            var config = currentConfig.mapping[programState.mappingIndex];
 
             deviceList.SelectedIndexChanged -= new EventHandler(deviceList_SelectedIndexChanged);
 
@@ -63,7 +111,7 @@ namespace di2xinput
                 else
                 {
                     if (config.deviceType == Mapping.MappedDeviceType.Keyboard) 
-                        convertGrid.Rows.Add(new object[2] { XIManager.xinputButtonNames[i], Mapping.GetNameFromScancode(config.mapping[i]) });
+                        convertGrid.Rows.Add(new object[2] { XIManager.xinputButtonNames[i], Mapping.GetNameFromScancode(config.mapping[i]) + " (" + config.mapping[i] + ")" });
                     else if (config.deviceType == Mapping.MappedDeviceType.Controller)
                         convertGrid.Rows.Add(new object[2] { XIManager.xinputButtonNames[i], DIManager.GetNameFromMapping(config.mapping[i]) });
                 }
@@ -80,23 +128,60 @@ namespace di2xinput
             {
                 for (int i = 0; i < XIManager.keyboardExtraMappings.Count; i++)
                 {
-                    convertGrid.Rows.Add(new object[2] { XIManager.keyboardExtraMappings[i], (config.mapping[16 + i] == 0 ? "<empty>" : Mapping.GetNameFromScancode(config.mapping[16 + i])) });
+                    convertGrid.Rows.Add(new object[2] { XIManager.keyboardExtraMappings[i], (config.mapping[16 + i] == 0 ? "<empty>" : Mapping.GetNameFromScancode(config.mapping[16 + i]) + "(" + config.mapping[16 + i] + ")") });
                 }
             }
 
             deviceList.SelectedIndexChanged += new EventHandler(deviceList_SelectedIndexChanged);
         }
 
+        private void FindProcessTask()
+        {
+            while(true)
+            {
+                int selectedMethod = 0;
+                string processName = string.Empty;
+
+                this.Invoke((MethodInvoker)delegate{ selectedMethod = searchMethod.SelectedIndex; });
+
+                if (selectedMethod == 0)
+                {
+                    if(processName != string.Empty && processName != null)
+                    {
+                        Debug.Print("Injecting into " + processName);
+                    }
+                }
+
+                Thread.Sleep(1000);
+            }
+        }
+
         private void MainForm_Load(object sender, EventArgs e)
         {
             DIManager.Init();
+
+            programState = new ProgramState { mappingIndex = 0, selectedConfig = "" };
+
+            currentConfig = new Configuration
+            {
+                mapping = new Mapping.MappingConfig[4]
+                {
+                    new Mapping.MappingConfig(),
+                    new Mapping.MappingConfig(),
+                    new Mapping.MappingConfig(),
+                    new Mapping.MappingConfig()
+                },
+                searchMethod = 0,
+                targetProcess = ""
+            };
+
+            IPC.Init((uint)currentConfig.mapping[0].ToByteArray().Length * 24);
+
+            Task injectTask = Task.Run((Action)FindProcessTask);
+
+            deviceList_DropDown(null, null);
+
             RefreshActiveController();
-
-            IPC.Init();
-            IPC.WriteContents(new byte[]{ 0, 0 });
-
-            var proc = Process.GetProcessesByName("notepad")[0];
-            var mod = WinAPI.GetAllModuleNames(proc);
         }
 
         private void deviceList_DropDown(object sender, EventArgs e)
@@ -113,16 +198,16 @@ namespace di2xinput
         {
             if (deviceList.SelectedItem.ToString() == "None")
             {
-                Mapping.configs[Mapping.currentIndex].ChangeDeviceType(Mapping.MappedDeviceType.None);
+                currentConfig.mapping[programState.mappingIndex].ChangeDeviceType(Mapping.MappedDeviceType.None);
             }
             else if (deviceList.SelectedItem.ToString() == "Keyboard")
             {
-                Mapping.configs[Mapping.currentIndex].ChangeDeviceType(Mapping.MappedDeviceType.Keyboard);
+                currentConfig.mapping[programState.mappingIndex].ChangeDeviceType(Mapping.MappedDeviceType.Keyboard);
             }
             else
             {
-                Mapping.configs[Mapping.currentIndex].ChangeDeviceType(Mapping.MappedDeviceType.Controller);
-                Mapping.configs[Mapping.currentIndex].deviceGuid = DIManager.GetGamepadIDFromName(deviceList.SelectedItem.ToString()).ToString();
+                currentConfig.mapping[programState.mappingIndex].ChangeDeviceType(Mapping.MappedDeviceType.Controller);
+                currentConfig.mapping[programState.mappingIndex].deviceGuid = DIManager.GetGamepadIDFromName(deviceList.SelectedItem.ToString()).ToString();
             }
 
             RefreshActiveController();
@@ -132,15 +217,16 @@ namespace di2xinput
         {
             if (e.ColumnIndex == 1 && e.RowIndex >= 0)
             {
-                var config = Mapping.configs[controllerSelect.SelectedIndex];
+                var config = currentConfig.mapping[controllerSelect.SelectedIndex];
 
                 if (config.deviceType == Mapping.MappedDeviceType.None)
                 {
                     MessageBox.Show("Select a device to use first.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
-                
-                inputDialog = new InputDialog(config.deviceType == Mapping.MappedDeviceType.Keyboard);
+
+                inputDialog = new InputDialog(config.deviceType == Mapping.MappedDeviceType.Keyboard ? Guid.Empty : new Guid(currentConfig.mapping[programState.mappingIndex].deviceGuid));
+
                 var result = inputDialog.ShowDialog();
                 
                 if(result != DialogResult.Cancel)
@@ -148,18 +234,18 @@ namespace di2xinput
                     if(config.deviceType == Mapping.MappedDeviceType.Keyboard)
                     {
                         convertGrid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = Mapping.GetNameFromScancode(inputDialog.resultScancode) + " (" + inputDialog.resultScancode + ")";
-                        Mapping.configs[controllerSelect.SelectedIndex].mapping[e.RowIndex] = (ushort)inputDialog.resultScancode;
+                        currentConfig.mapping[controllerSelect.SelectedIndex].mapping[e.RowIndex] = (ushort)inputDialog.resultScancode;
                     }
                     else
                     {
                         convertGrid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = DIManager.GetNameFromMapping(inputDialog.resultJoystickMapping);
-                        Mapping.configs[controllerSelect.SelectedIndex].mapping[e.RowIndex] = inputDialog.resultJoystickMapping;
+                        currentConfig.mapping[controllerSelect.SelectedIndex].mapping[e.RowIndex] = inputDialog.resultJoystickMapping;
                     }
                 }
                 else
                 {
                     convertGrid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = "<empty>";
-                    Mapping.configs[controllerSelect.SelectedIndex].mapping[e.RowIndex] = 0;
+                    currentConfig.mapping[controllerSelect.SelectedIndex].mapping[e.RowIndex] = 0;
                 }
             }
         }
@@ -183,9 +269,49 @@ namespace di2xinput
 
         private void tabControl1_Selecting(object sender, TabControlEventArgs e)
         {
-            Mapping.currentIndex = e.TabPageIndex;
+            programState.mappingIndex = e.TabPageIndex;
             RefreshActiveController();
         }
-        
+
+        private void btnSave_Click(object sender, EventArgs e)
+        {
+            if(configCombo.Text != "")
+            {
+                if (!Directory.Exists(configFolder))
+                    Directory.CreateDirectory(configFolder);
+
+                XmlSerializer configSerializer = new XmlSerializer(typeof(Configuration));
+
+                using (TextWriter textWritter = new StreamWriter(configFolder + configCombo.Text + ".xml"))
+                {
+                    configSerializer.Serialize(textWritter, currentConfig);
+                }
+            }
+        }
+
+        private void configCombo_DropDown(object sender, EventArgs e)
+        {
+            if(Directory.Exists(configFolder))
+            {
+                configCombo.Items.Clear();
+
+                foreach(string file in Directory.EnumerateFiles(configFolder, "*.xml"))
+                {
+                    int start = file.LastIndexOf('/') + 1;
+                    configCombo.Items.Add(file.Substring(start, file.Length - start - 4));
+                }
+            }
+        }
+
+        private void configCombo_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            LoadConfig(configCombo.Text);
+            RefreshActiveController();
+        }
+
+        private void searchMethod_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            currentConfig.searchMethod = searchMethod.SelectedIndex;
+        }
     }
 }

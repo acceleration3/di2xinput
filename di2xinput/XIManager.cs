@@ -38,14 +38,14 @@ namespace di2xinput
 
         public static List<string> keyboardExtraMappings = new List<string>()
         {
-            "Left Stick X+",
-            "Left Stick X-",
-            "Left Stick Y+",
-            "Left Stick Y-",
-            "Right Stick X+",
-            "Right Stick X-",
-            "Right Stick Y+",
-            "Right Stick Y-"
+            "Left Stick Up",
+            "Left Stick Down",
+            "Left Stick Left",
+            "Left Stick Right",
+            "Right Stick Up",
+            "Right Stick Down",
+            "Right Stick Left",
+            "Right Stick Right"
         };
 
     }
