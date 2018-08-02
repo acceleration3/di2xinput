@@ -58,6 +58,7 @@ namespace di2xinput
                     }
 
                     searchMethod.SelectedIndex = currentConfig.searchMethod;
+                    targetCombo.Text = currentConfig.targetProcess;
 
                     return true;
                 }
@@ -139,16 +140,11 @@ namespace di2xinput
         {
             while(true)
             {
-                int selectedMethod = 0;
-                string processName = string.Empty;
-
-                this.Invoke((MethodInvoker)delegate{ selectedMethod = searchMethod.SelectedIndex; });
-
-                if (selectedMethod == 0)
+                if (currentConfig.searchMethod == 0)
                 {
-                    if(processName != string.Empty && processName != null)
+                    if(currentConfig.targetProcess != "")
                     {
-                        Debug.Print("Injecting into " + processName);
+                        Debug.Print("Injecting into " + currentConfig.targetProcess);
                     }
                 }
 
@@ -159,6 +155,9 @@ namespace di2xinput
         private void MainForm_Load(object sender, EventArgs e)
         {
             DIManager.Init();
+            WinAPI.GetLLAddress();
+
+            deviceList_DropDown(null, null);
 
             programState = new ProgramState { mappingIndex = 0, selectedConfig = "" };
 
@@ -178,9 +177,6 @@ namespace di2xinput
             IPC.Init((uint)currentConfig.mapping[0].ToByteArray().Length * 24);
 
             Task injectTask = Task.Run((Action)FindProcessTask);
-
-            deviceList_DropDown(null, null);
-
             RefreshActiveController();
         }
 
@@ -312,6 +308,16 @@ namespace di2xinput
         private void searchMethod_SelectedIndexChanged(object sender, EventArgs e)
         {
             currentConfig.searchMethod = searchMethod.SelectedIndex;
+        }
+
+        private void targetCombo_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            currentConfig.targetProcess = targetCombo.SelectedItem.ToString();
+        }
+
+        private void targetCombo_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            e.Handled = true;
         }
     }
 }

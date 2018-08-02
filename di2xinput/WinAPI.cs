@@ -32,13 +32,6 @@ namespace di2xinput
         [DllImport("user32.dll")]
         public static extern int GetKeyNameText(uint lParam, [Out] StringBuilder lpString, int nSize);
 
-        [DllImport("kernel32.dll", SetLastError = true, CallingConvention = CallingConvention.Winapi)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool IsWow64Process([In] IntPtr process, [Out] out bool wow64Process);
-
-        [DllImport("psapi.dll", SetLastError = true)]
-        public static extern bool EnumProcessModulesEx(IntPtr hProcess, [Out] IntPtr lphModule, UInt32 cb, [MarshalAs(UnmanagedType.U4)] out UInt32 lpcbNeeded, DwFilterFlag dwff);
-
         [DllImport("kernel32.dll")]
         public static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
 
@@ -76,18 +69,8 @@ namespace di2xinput
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool UnmapViewOfFile(IntPtr lpBaseAddress);
 
-
-        // privileges
-        const int PROCESS_CREATE_THREAD = 0x0002;
-        const int PROCESS_QUERY_INFORMATION = 0x0400;
-        const int PROCESS_VM_OPERATION = 0x0008;
-        const int PROCESS_VM_WRITE = 0x0020;
-        const int PROCESS_VM_READ = 0x0010;
-
-        // used for memory allocation
-        const uint MEM_COMMIT = 0x00001000;
-        const uint MEM_RESERVE = 0x00002000;
-        const uint PAGE_READWRITE = 4;
+        [DllImport("kernel32.dll")]
+        public static extern bool GetBinaryType(string lpApplicationName, out BinaryType lpBinaryType);
 
         [Flags]
         public enum FileMapProtection : uint
@@ -113,62 +96,26 @@ namespace di2xinput
             FileMapExecute = 0x0020,
         }
 
-        [Flags]
-        public enum ProcessAccessFlags : uint
+        public enum BinaryType : uint
         {
-            All = 0x001F0FFF,
-            Terminate = 0x00000001,
-            CreateThread = 0x00000002,
-            VirtualMemoryOperation = 0x00000008,
-            VirtualMemoryRead = 0x00000010,
-            VirtualMemoryWrite = 0x00000020,
-            DuplicateHandle = 0x00000040,
-            CreateProcess = 0x000000080,
-            SetQuota = 0x00000100,
-            SetInformation = 0x00000200,
-            QueryInformation = 0x00000400,
-            QueryLimitedInformation = 0x00001000,
-            Synchronize = 0x00100000
+            SCS_32BIT_BINARY = 0, // A 32-bit Windows-based application
+            SCS_64BIT_BINARY = 6, // A 64-bit Windows-based application.
+            SCS_DOS_BINARY = 1, // An MS-DOS – based application
+            SCS_OS216_BINARY = 5, // A 16-bit OS/2-based application
+            SCS_PIF_BINARY = 3, // A PIF file that executes an MS-DOS – based application
+            SCS_POSIX_BINARY = 4, // A POSIX – based application
+            SCS_WOW_BINARY = 2 // A 16-bit Windows-based application 
         }
 
-        public enum DwFilterFlag : uint
-        {
-            LIST_MODULES_DEFAULT = 0x0,    // This is the default one app would get without any flag.
-            LIST_MODULES_32BIT = 0x01,   // list 32bit modules in the target process.
-            LIST_MODULES_64BIT = 0x02,   // list all 64bit modules. 32bit exe will be stripped off.
-            LIST_MODULES_ALL = (LIST_MODULES_32BIT | LIST_MODULES_64BIT)   // list all the modules
-        }
+        public const int PROCESS_CREATE_THREAD = 0x0002;
+        public const int PROCESS_QUERY_INFORMATION = 0x0400;
+        public const int PROCESS_VM_OPERATION = 0x0008;
+        public const int PROCESS_VM_WRITE = 0x0020;
+        public const int PROCESS_VM_READ = 0x0010;
 
-        [Flags]
-        public enum AllocationType
-        {
-            Commit = 0x1000,
-            Reserve = 0x2000,
-            Decommit = 0x4000,
-            Release = 0x8000,
-            Reset = 0x80000,
-            Physical = 0x400000,
-            TopDown = 0x100000,
-            WriteWatch = 0x200000,
-            LargePages = 0x20000000
-        }
-
-        [Flags]
-        public enum MemoryProtection
-        {
-            Execute = 0x10,
-            ExecuteRead = 0x20,
-            ExecuteReadWrite = 0x40,
-            ExecuteWriteCopy = 0x80,
-            NoAccess = 0x01,
-            ReadOnly = 0x02,
-            ReadWrite = 0x04,
-            WriteCopy = 0x08,
-            GuardModifierflag = 0x100,
-            NoCacheModifierflag = 0x200,
-            WriteCombineModifierflag = 0x400
-        }
-
+        public const uint MEM_COMMIT = 0x00001000;
+        public const uint MEM_RESERVE = 0x00002000;
+        public const uint PAGE_READWRITE = 4;
         public const uint MAPVK_VK_TO_VSC = 0x00;
         public const uint MAPVK_VSC_TO_VK = 0x01;
         public const uint MAPVK_VK_TO_CHAR = 0x02;
@@ -176,37 +123,64 @@ namespace di2xinput
         public const uint MAPVK_VK_TO_VSC_EX = 0x04;
         public const UInt32 INFINITE = 0xFFFFFFFF;
 
-        public static bool Is64BitProcess(Process proc)
+        public static IntPtr LLAddress32 = IntPtr.Zero;
+
+        public static void GetLLAddress()
         {
-            bool res = IsWow64Process(proc.Handle, out bool retVal);
-            return retVal;
+            ProcessStartInfo startInfo = new ProcessStartInfo
+            {
+                WindowStyle = ProcessWindowStyle.Hidden,
+                FileName = "LLAddress.exe"
+            };
+
+            Process proc = Process.Start(startInfo);
+            proc.WaitForExit();
+            LLAddress32 = new IntPtr(proc.ExitCode);
         }
 
-        public static Dictionary<string, IntPtr> GetAllModuleNames(Process proc)
+        public static int InjectDLL(Process proc)
         {
-            Dictionary<string, IntPtr> moduleList = new Dictionary<string, IntPtr>();
+            IntPtr procHandle = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, false, proc.Id);
 
-            uint sizeNeeded = 0;
+            if (procHandle == IntPtr.Zero)
+                return 1;
 
-            EnumProcessModulesEx(proc.Handle, IntPtr.Zero, 4, out sizeNeeded, DwFilterFlag.LIST_MODULES_ALL);
+            BinaryType type;
+            GetBinaryType(proc.MainModule.FileName, out type);
 
-            IntPtr[] modules = new IntPtr[sizeNeeded / Marshal.SizeOf(typeof(IntPtr))];
-            GCHandle gch = GCHandle.Alloc(modules, GCHandleType.Pinned);
-            IntPtr pModules = gch.AddrOfPinnedObject();
+            IntPtr LoadLibraryAddress = IntPtr.Zero;
 
-            EnumProcessModulesEx(proc.Handle, pModules, sizeNeeded, out sizeNeeded, DwFilterFlag.LIST_MODULES_ALL);
+            bool is64Bit = (type == BinaryType.SCS_64BIT_BINARY);
 
-            StringBuilder sb = new StringBuilder(256);
+            if (is64Bit)
+                LoadLibraryAddress = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryW");
+            else
+                LoadLibraryAddress = LLAddress32;
 
-            for(int i = 0; i < modules.Length; i++)
-            {
-                GetModuleFileNameEx(proc.Handle, modules[i], sb, 256);
+            if (LoadLibraryAddress == IntPtr.Zero)
+                return 2;
 
-                if (!moduleList.ContainsKey(sb.ToString()))
-                    moduleList.Add(sb.ToString(), modules[i]);
-            }
+            string DLLPath = Directory.GetCurrentDirectory() + "\\HookDLL" + (is64Bit ? "64" : "32") + ".dll\0";
+            int pathLength = Encoding.Unicode.GetByteCount(DLLPath);
+            byte[] pathBuffer = Encoding.Unicode.GetBytes(DLLPath);
 
-            return moduleList;
+            IntPtr paramAddress = VirtualAllocEx(procHandle, IntPtr.Zero, (uint)pathLength, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+            if (paramAddress == IntPtr.Zero)
+                return 3;
+
+            UIntPtr bytesWritten = UIntPtr.Zero;
+            bool result = WriteProcessMemory(procHandle, paramAddress, pathBuffer, (uint)pathLength, out bytesWritten);
+
+            if (!result)
+                return 4;
+
+            IntPtr threadHandle = CreateRemoteThread(procHandle, IntPtr.Zero, 0, LoadLibraryAddress, paramAddress, 0, IntPtr.Zero);
+
+            if (threadHandle == IntPtr.Zero)
+                return 5;
+
+            return 0;
         }
     }
 }
