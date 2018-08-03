@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
+using System.Management;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -37,6 +38,10 @@ namespace di2xinput
         public static ProgramState programState;
         public static Configuration currentConfig;
 
+        private static ManagementEventWatcher processStartEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStartTrace");
+
+        private static Dictionary<Process, int> monitoredProcesses = new Dictionary<Process, int>();
+
         private const string configFolder = "./configs/";
 
         public MainForm()
@@ -52,14 +57,25 @@ namespace di2xinput
 
                 try
                 {
+                    Configuration newConfig;
+
                     using (TextReader textReader = new StreamReader(configFolder + config + ".xml"))
+                        newConfig = (Configuration)configSerializer.Deserialize(textReader);
+
+                    foreach (Mapping.MappingConfig conf in newConfig.mapping)
                     {
-                        currentConfig = (Configuration)configSerializer.Deserialize(textReader);
+                        if (conf.deviceGuid != Guid.Empty.ToString() && DIManager.GetJoystickFromID(conf.deviceGuid.ToString()) == null)
+                        {
+                            MessageBox.Show("This configuration is using a device that isn't plugged in. Please plug it in and reload the configuration.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return false;
+                        }
                     }
+
+                    currentConfig = newConfig;
 
                     searchMethod.SelectedIndex = currentConfig.searchMethod;
                     targetCombo.Text = currentConfig.targetProcess;
-
+                    
                     return true;
                 }
                 catch
@@ -136,15 +152,70 @@ namespace di2xinput
             deviceList.SelectedIndexChanged += new EventHandler(deviceList_SelectedIndexChanged);
         }
 
+        private bool InjectDLL(Process proc)
+        {
+            if (proc == null)
+                return false;
+
+            bool hasXinput = false;
+            bool alreadyInjected = false;
+
+            var modules = WinAPI.GetAllModuleNames(proc);
+
+            foreach (var mod in modules)
+            {
+                if (mod.Key.ToLower().Contains("xinput") && mod.Key.ToLower().Contains("dll"))
+                    hasXinput = true;
+                if (mod.Key.ToLower().Contains("hookdll"))
+                    alreadyInjected = true;
+            }
+
+            if (hasXinput && !alreadyInjected)
+            {
+                Debug.Print("Injected into " + proc.ProcessName);
+                WinAPI.InjectDLL(proc);
+                return true;
+            }
+
+            return false;
+        }
+
         private void FindProcessTask()
         {
-            while(true)
+            while (true)
             {
                 if (currentConfig.searchMethod == 0)
                 {
                     if(currentConfig.targetProcess != "")
                     {
-                        Debug.Print("Injecting into " + currentConfig.targetProcess);
+                        foreach(Process proc in Process.GetProcessesByName(currentConfig.targetProcess))
+                        {
+                            InjectDLL(proc);
+                        }
+                    }
+                }
+                else
+                {
+                    foreach(var proc in monitoredProcesses.ToList())
+                    {
+                        if(proc.Key.HasExited && proc.Value >= 6)
+                        {
+                            monitoredProcesses.Remove(proc.Key);
+                            continue;
+                        }
+                        
+                        bool result = InjectDLL(proc.Key);
+
+                        if(result)
+                        {
+                            var processName = proc.Key.ProcessName;
+                            watcherStatus.BeginInvoke((Action)(() => watcherStatus.Text = "Found and injected into process " + processName + "."));
+                        }
+
+                        if (result)
+                            monitoredProcesses.Remove(proc.Key);
+                        else
+                            monitoredProcesses[proc.Key]++;
                     }
                 }
 
@@ -152,8 +223,21 @@ namespace di2xinput
             }
         }
 
+        private static void ProcessStart_EventArrived(object sender, EventArrivedEventArgs e)
+        {
+            string name = e.NewEvent.Properties["ProcessName"].Value.ToString();
+            int extensionStart = name.IndexOf('.');
+            name = name.Substring(0, extensionStart);
+
+            foreach(Process proc in Process.GetProcessesByName(name))
+                monitoredProcesses.Add(proc, 0);
+        }
+
         private void MainForm_Load(object sender, EventArgs e)
         {
+            processStartEvent.EventArrived += new EventArrivedEventHandler(ProcessStart_EventArrived);
+            processStartEvent.Start();
+
             DIManager.Init();
             WinAPI.GetLLAddress();
 
@@ -174,9 +258,10 @@ namespace di2xinput
                 targetProcess = ""
             };
 
-            IPC.Init((uint)currentConfig.mapping[0].ToByteArray().Length * 24);
-
             Task injectTask = Task.Run((Action)FindProcessTask);
+
+            IPC.Init((uint)currentConfig.mapping[0].ToByteArray().Length * 24);
+            
             RefreshActiveController();
         }
 
@@ -301,8 +386,8 @@ namespace di2xinput
 
         private void configCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
-            LoadConfig(configCombo.Text);
-            RefreshActiveController();
+            if(LoadConfig(configCombo.Text))
+                RefreshActiveController();
         }
 
         private void searchMethod_SelectedIndexChanged(object sender, EventArgs e)

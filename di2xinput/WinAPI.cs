@@ -72,6 +72,12 @@ namespace di2xinput
         [DllImport("kernel32.dll")]
         public static extern bool GetBinaryType(string lpApplicationName, out BinaryType lpBinaryType);
 
+        [DllImport("psapi.dll", SetLastError = true)]
+        public static extern bool EnumProcessModulesEx(IntPtr hProcess, [Out] IntPtr lphModule, UInt32 cb, [MarshalAs(UnmanagedType.U4)] out UInt32 lpcbNeeded, DwFilterFlag dwff);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool GetExitCodeProcess(IntPtr hProcess, out uint ExitCode);
+
         [Flags]
         public enum FileMapProtection : uint
         {
@@ -107,6 +113,14 @@ namespace di2xinput
             SCS_WOW_BINARY = 2 // A 16-bit Windows-based application 
         }
 
+        public enum DwFilterFlag : uint
+        {
+            LIST_MODULES_DEFAULT = 0x0,    // This is the default one app would get without any flag.
+            LIST_MODULES_32BIT = 0x01,   // list 32bit modules in the target process.
+            LIST_MODULES_64BIT = 0x02,   // list all 64bit modules. 32bit exe will be stripped off.
+            LIST_MODULES_ALL = (LIST_MODULES_32BIT | LIST_MODULES_64BIT)   // list all the modules
+        }
+
         public const int PROCESS_CREATE_THREAD = 0x0002;
         public const int PROCESS_QUERY_INFORMATION = 0x0400;
         public const int PROCESS_VM_OPERATION = 0x0008;
@@ -124,6 +138,33 @@ namespace di2xinput
         public const UInt32 INFINITE = 0xFFFFFFFF;
 
         public static IntPtr LLAddress32 = IntPtr.Zero;
+
+        public static Dictionary<string, IntPtr> GetAllModuleNames(Process proc)
+        {
+            Dictionary<string, IntPtr> moduleList = new Dictionary<string, IntPtr>();
+
+            uint sizeNeeded = 0;
+        
+            EnumProcessModulesEx(proc.Handle, IntPtr.Zero, 4, out sizeNeeded, DwFilterFlag.LIST_MODULES_ALL);
+
+            IntPtr[] modules = new IntPtr[sizeNeeded / Marshal.SizeOf(typeof(IntPtr))];
+            GCHandle gch = GCHandle.Alloc(modules, GCHandleType.Pinned);
+            IntPtr pModules = gch.AddrOfPinnedObject();
+
+            EnumProcessModulesEx(proc.Handle, pModules, sizeNeeded, out sizeNeeded, DwFilterFlag.LIST_MODULES_ALL);
+
+            StringBuilder sb = new StringBuilder(256);
+
+            for (int i = 0; i < modules.Length; i++)
+            {
+                GetModuleFileNameEx(proc.Handle, modules[i], sb, 256);
+
+                if (!moduleList.ContainsKey(sb.ToString()))
+                    moduleList.Add(sb.ToString(), modules[i]);
+            }
+
+            return moduleList;
+        }
 
         public static void GetLLAddress()
         {
