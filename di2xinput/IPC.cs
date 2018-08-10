@@ -7,41 +7,43 @@ using System.Security.AccessControl;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.IO;
+using System.Net.Sockets;
+using System.Net;
+using System.Threading;
+using System.Diagnostics;
+using System.IO.MemoryMappedFiles;
+using System.IO.Pipes;
+using System.Security.Principal;
 
 namespace di2xinput
 {
     class IPC
     {
-        const string sharedMemoryFile = "Global\\di2xinput";
+        private static List<NamedPipeClientStream> openPipes = new List<NamedPipeClientStream>();
 
-        private static IntPtr fileHandle = IntPtr.Zero;
-        private static uint fileSize = 0;
-
-        public static void Init(uint fileSize)
+        public static void WriteData(NamedPipeClientStream pipe, MemoryStream data)
         {
-            IPC.fileSize = fileSize;
-            fileHandle = WinAPI.CreateFileMapping(new IntPtr(-1), IntPtr.Zero, WinAPI.FileMapProtection.PageReadWrite, 0, fileSize, sharedMemoryFile);
+            byte[] lengthBuffer = BitConverter.GetBytes((int)data.Length);
 
-            if (fileHandle == IntPtr.Zero)
-            {
-                MessageBox.Show("Failed to create memory mapped file.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
+            if (!pipe.IsConnected)
+                pipe.Connect(2000);
+
+            pipe.Write(lengthBuffer, 0, 4);
+            pipe.Write(data.GetBuffer(), 0, (int)data.Length);
+            pipe.Flush();
         }
 
-        public static void WriteContents(byte[] bytes)
+        public static NamedPipeClientStream AddPipe(string name)
         {
-            MemoryStream ms = new MemoryStream();
-
-            ms.Write(BitConverter.GetBytes(fileSize - 4), 0, 4);
-            ms.Write(bytes, 0, bytes.Length);
-
-            byte[] data = ms.ToArray();
-
-            IntPtr map = WinAPI.MapViewOfFile(fileHandle, WinAPI.FileMapAccess.FileMapAllAccess, 0, 0, new UIntPtr((uint)bytes.Length));
-            Marshal.Copy(data, 0, map, data.Length);
-            WinAPI.UnmapViewOfFile(map);
+            var newPipe = new NamedPipeClientStream(".", name, PipeDirection.InOut, PipeOptions.None, TokenImpersonationLevel.Impersonation);     
+            openPipes.Add(newPipe);
+            return newPipe;
         }
-        
+
+        public static void BroadcastData(MemoryStream ms)
+        {
+            foreach(NamedPipeClientStream pipe in openPipes)
+                WriteData(pipe, ms);
+        }
     }
 }

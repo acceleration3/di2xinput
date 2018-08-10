@@ -66,7 +66,8 @@ namespace di2xinput
             if ((mapping & 1) == 1 && (mapping & 2) == 2)
             {
                 int index = (mapping & 0x3C) >> 2;
-                return "Axis " + index;
+                string sign = (mapping & 0x40) >> 6 == 1 ? "-" : "+";
+                return "Axis " + index + " " + sign;
             }
             else if((mapping & 2) == 2)
             {
@@ -110,18 +111,24 @@ namespace di2xinput
                 }
             }
 
-            Func<ushort, ushort> axisMapping = (index) => 
+            Func<ushort, string, ushort> axisMapping = (index, sign) => 
             {
-                return (ushort)((mapping | 3) | (index << 2));
+                return (ushort)((mapping | 3) | (index << 2) | (sign == "-" ? 1 : 0) << 6);
             };
 
-            if (state.X != 0) return axisMapping(0);
-            if (state.Y != 0) return axisMapping(1);
-            if (state.Z != 0) return axisMapping(2);
-            if (state.RotationX != 0) return axisMapping(3);
-            if (state.RotationY != 0) return axisMapping(4);
-            if (state.RotationZ != 0) return axisMapping(5);
-            
+            if (state.X < 0) return axisMapping(0, "-");
+            if (state.X > 0) return axisMapping(0, "+");
+            if (state.Y < 0) return axisMapping(1, "-");
+            if (state.Y > 0) return axisMapping(1, "+");
+            if (state.Z < 0) return axisMapping(2, "-");
+            if (state.Z > 0) return axisMapping(2, "+");
+
+            if (state.RotationX < 0) return axisMapping(3, "-");
+            if (state.RotationX > 0) return axisMapping(3, "+");
+            if (state.RotationY < 0) return axisMapping(4, "-");
+            if (state.RotationY > 0) return axisMapping(4, "+");
+            if (state.RotationZ < 0) return axisMapping(5, "-");
+            if (state.RotationZ > 0) return axisMapping(5, "+");
 
             return mapping;
         }

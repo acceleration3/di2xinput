@@ -57,7 +57,7 @@ namespace di2xinput
         [DllImport("psapi.dll")]
         public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
 
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         public static extern IntPtr CreateFileMapping(IntPtr hFile, IntPtr lpFileMappingAttributes, FileMapProtection flProtect, uint dwMaximumSizeHigh, uint dwMaximumSizeLow, [MarshalAs(UnmanagedType.LPStr)] string lpName);
 
         [DllImport("kernel32.dll", SetLastError = true)]
@@ -77,6 +77,9 @@ namespace di2xinput
 
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool GetExitCodeProcess(IntPtr hProcess, out uint ExitCode);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern UInt32 WaitForSingleObject(IntPtr hHandle, UInt32 dwMilliseconds);
 
         [Flags]
         public enum FileMapProtection : uint
@@ -143,25 +146,40 @@ namespace di2xinput
         {
             Dictionary<string, IntPtr> moduleList = new Dictionary<string, IntPtr>();
 
-            uint sizeNeeded = 0;
-        
-            EnumProcessModulesEx(proc.Handle, IntPtr.Zero, 4, out sizeNeeded, DwFilterFlag.LIST_MODULES_ALL);
-
-            IntPtr[] modules = new IntPtr[sizeNeeded / Marshal.SizeOf(typeof(IntPtr))];
-            GCHandle gch = GCHandle.Alloc(modules, GCHandleType.Pinned);
-            IntPtr pModules = gch.AddrOfPinnedObject();
-
-            EnumProcessModulesEx(proc.Handle, pModules, sizeNeeded, out sizeNeeded, DwFilterFlag.LIST_MODULES_ALL);
-
-            StringBuilder sb = new StringBuilder(256);
-
-            for (int i = 0; i < modules.Length; i++)
+            try
             {
-                GetModuleFileNameEx(proc.Handle, modules[i], sb, 256);
+                uint sizeNeeded = 0;
+                IntPtr procHandle = IntPtr.Zero;
 
-                if (!moduleList.ContainsKey(sb.ToString()))
-                    moduleList.Add(sb.ToString(), modules[i]);
+                if (!proc.HasExited)
+                    procHandle = proc.Handle;
+
+                EnumProcessModulesEx(procHandle, IntPtr.Zero, 4, out sizeNeeded, DwFilterFlag.LIST_MODULES_ALL);
+
+                if (sizeNeeded == 0)
+                    return new Dictionary<string, IntPtr>();
+
+                IntPtr[] modules = new IntPtr[sizeNeeded / Marshal.SizeOf(typeof(IntPtr))];
+                GCHandle gch = GCHandle.Alloc(modules, GCHandleType.Pinned);
+                IntPtr pModules = gch.AddrOfPinnedObject();
+
+                EnumProcessModulesEx(procHandle, pModules, sizeNeeded, out sizeNeeded, DwFilterFlag.LIST_MODULES_ALL);
+
+                if (sizeNeeded == 0)
+                    return new Dictionary<string, IntPtr>();
+
+                StringBuilder sb = new StringBuilder(256);
+
+                for (int i = 0; i < modules.Length; i++)
+                {
+                    if (GetModuleFileNameEx(proc.Handle, modules[i], sb, 256) == 0)
+                        continue;
+
+                    if (!moduleList.ContainsKey(sb.ToString()))
+                        moduleList.Add(sb.ToString(), modules[i]);
+                }
             }
+            catch { }
 
             return moduleList;
         }
@@ -220,6 +238,14 @@ namespace di2xinput
 
             if (threadHandle == IntPtr.Zero)
                 return 5;
+
+            WaitForSingleObject(threadHandle, 0xFFFFFFFF);
+
+            uint exitCode = 0;
+            GetExitCodeThread(threadHandle, out exitCode);
+
+            if(exitCode == 0)
+                return 6;
 
             return 0;
         }

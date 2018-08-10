@@ -25,19 +25,7 @@ namespace di2xinput
             "X",
             "Y",
             "Left Trigger",
-            "Right Trigger"
-        };
-
-        public static List<string> controllerExtraMappings = new List<string>()
-        {
-            "Left Stick X",
-            "Left Stick Y",
-            "Right Stick X",
-            "Right Stick Y"
-        };
-
-        public static List<string> keyboardExtraMappings = new List<string>()
-        {
+            "Right Trigger",
             "Left Stick Up",
             "Left Stick Down",
             "Left Stick Left",

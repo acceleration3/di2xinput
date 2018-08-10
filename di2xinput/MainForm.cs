@@ -22,387 +22,157 @@ namespace di2xinput
     {
         public static InputDialog inputDialog;
 
-        public struct ProgramState
-        {
-            public int mappingIndex;
-            public string selectedConfig;
-        }
-
-        public struct Configuration
-        {
-            public int searchMethod;
-            public string targetProcess;
-            public Mapping.MappingConfig[] mapping;
-        }
-
-        public static ProgramState programState;
-        public static Configuration currentConfig;
-
-        private static ManagementEventWatcher processStartEvent = new ManagementEventWatcher("SELECT * FROM Win32_ProcessStartTrace");
-
-        private static Dictionary<Process, int> monitoredProcesses = new Dictionary<Process, int>();
-
-        private const string configFolder = "./configs/";
-
         public MainForm()
         {
             InitializeComponent();
         }
 
-        private bool LoadConfig(string config)
+        private void RefreshMappingView()
         {
-            if (File.Exists(configFolder + config + ".xml"))
-            {
-                XmlSerializer configSerializer = new XmlSerializer(typeof(Configuration));
+            var activeConfig = Program.currentConfig.mapping[Program.programState.mappingIndex];
 
-                try
-                {
-                    Configuration newConfig;
+            //Update DeviceCombo
 
-                    using (TextReader textReader = new StreamReader(configFolder + config + ".xml"))
-                        newConfig = (Configuration)configSerializer.Deserialize(textReader);
+            DeviceCombo.SelectedIndexChanged -= new EventHandler(DeviceCombo_SelectedIndexChanged);
 
-                    foreach (Mapping.MappingConfig conf in newConfig.mapping)
-                    {
-                        if (conf.deviceGuid != Guid.Empty.ToString() && DIManager.GetJoystickFromID(conf.deviceGuid.ToString()) == null)
-                        {
-                            MessageBox.Show("This configuration is using a device that isn't plugged in. Please plug it in and reload the configuration.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return false;
-                        }
-                    }
-
-                    currentConfig = newConfig;
-
-                    searchMethod.SelectedIndex = currentConfig.searchMethod;
-                    targetCombo.Text = currentConfig.targetProcess;
-                    
-                    return true;
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-
-            return false;
-        }
-
-        private void RefreshActiveController()
-        {
-            var config = currentConfig.mapping[programState.mappingIndex];
-
-            deviceList.SelectedIndexChanged -= new EventHandler(deviceList_SelectedIndexChanged);
-
-            if (config.deviceType == Mapping.MappedDeviceType.None)
-            {
-                deviceList.Text = "None";
-            }
-            else if(config.deviceType == Mapping.MappedDeviceType.Keyboard)
-            {
-                deviceList.Text = "Keyboard";
-            }
+            if (activeConfig.deviceType == Mapping.MappedDeviceType.None)
+                DeviceCombo.Text = "None";
+            else if (activeConfig.deviceType == Mapping.MappedDeviceType.Keyboard)
+                DeviceCombo.Text = "Keyboard";
             else
+                DeviceCombo.Text = DIManager.GetJoystickFromID(activeConfig.deviceGuid).Properties.ProductName;
+
+            DeviceCombo.SelectedIndexChanged += new EventHandler(DeviceCombo_SelectedIndexChanged);
+
+            //Update MappingGrid
+            MappingGrid.Rows.Clear();
+
+            if (activeConfig.deviceType != Mapping.MappedDeviceType.None)
             {
-                var joy = DIManager.GetJoystickFromID(config.deviceGuid);
-
-                if (joy == null)
+                for (int i = 0; i < XIManager.xinputButtonNames.Count; i++)
                 {
-                    deviceList.Text = "None";
-                    deviceList_SelectedIndexChanged(null, null);
-                    MessageBox.Show("The device associated with this controller is no longer avaliable.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                else
-                {
-                    deviceList.Text = joy.Properties.ProductName;
-                }
-            }
+                    string mappingName = "<empty>";
 
-            convertGrid.Rows.Clear();
-
-            for (int i = 0; i < XIManager.xinputButtonNames.Count; i++)
-            {
-                if(config.mapping[i] == 0 && config.deviceType != Mapping.MappedDeviceType.None)
-                {
-                    convertGrid.Rows.Add(new object[2] { XIManager.xinputButtonNames[i], "<empty>" });
-                }
-                else
-                {
-                    if (config.deviceType == Mapping.MappedDeviceType.Keyboard) 
-                        convertGrid.Rows.Add(new object[2] { XIManager.xinputButtonNames[i], Mapping.GetNameFromScancode(config.mapping[i]) + " (" + config.mapping[i] + ")" });
-                    else if (config.deviceType == Mapping.MappedDeviceType.Controller)
-                        convertGrid.Rows.Add(new object[2] { XIManager.xinputButtonNames[i], DIManager.GetNameFromMapping(config.mapping[i]) });
-                }
-            }
-            
-            if(config.deviceType == Mapping.MappedDeviceType.Controller)
-            {
-                for (int i = 0; i < XIManager.controllerExtraMappings.Count; i++)
-                {
-                    convertGrid.Rows.Add(new object[2] { XIManager.controllerExtraMappings[i], (config.mapping[16 + i] == 0 ? "<empty>" : DIManager.GetNameFromMapping(config.mapping[16 + i])) });
-                }                
-            }
-            else if(config.deviceType == Mapping.MappedDeviceType.Keyboard)
-            {
-                for (int i = 0; i < XIManager.keyboardExtraMappings.Count; i++)
-                {
-                    convertGrid.Rows.Add(new object[2] { XIManager.keyboardExtraMappings[i], (config.mapping[16 + i] == 0 ? "<empty>" : Mapping.GetNameFromScancode(config.mapping[16 + i]) + "(" + config.mapping[16 + i] + ")") });
-                }
-            }
-
-            deviceList.SelectedIndexChanged += new EventHandler(deviceList_SelectedIndexChanged);
-        }
-
-        private bool InjectDLL(Process proc)
-        {
-            if (proc == null)
-                return false;
-
-            bool hasXinput = false;
-            bool alreadyInjected = false;
-
-            var modules = WinAPI.GetAllModuleNames(proc);
-
-            foreach (var mod in modules)
-            {
-                if (mod.Key.ToLower().Contains("xinput") && mod.Key.ToLower().Contains("dll"))
-                    hasXinput = true;
-                if (mod.Key.ToLower().Contains("hookdll"))
-                    alreadyInjected = true;
-            }
-
-            if (hasXinput && !alreadyInjected)
-            {
-                Debug.Print("Injected into " + proc.ProcessName);
-                WinAPI.InjectDLL(proc);
-                return true;
-            }
-
-            return false;
-        }
-
-        private void FindProcessTask()
-        {
-            while (true)
-            {
-                if (currentConfig.searchMethod == 0)
-                {
-                    if(currentConfig.targetProcess != "")
+                    if (activeConfig.mapping[i] != 0)
                     {
-                        foreach(Process proc in Process.GetProcessesByName(currentConfig.targetProcess))
-                        {
-                            InjectDLL(proc);
-                        }
-                    }
-                }
-                else
-                {
-                    foreach(var proc in monitoredProcesses.ToList())
-                    {
-                        if(proc.Key.HasExited && proc.Value >= 6)
-                        {
-                            monitoredProcesses.Remove(proc.Key);
-                            continue;
-                        }
-                        
-                        bool result = InjectDLL(proc.Key);
-
-                        if(result)
-                        {
-                            var processName = proc.Key.ProcessName;
-                            watcherStatus.BeginInvoke((Action)(() => watcherStatus.Text = "Found and injected into process " + processName + "."));
-                        }
-
-                        if (result)
-                            monitoredProcesses.Remove(proc.Key);
+                        if (activeConfig.deviceType == Mapping.MappedDeviceType.Controller)
+                            mappingName = DIManager.GetNameFromMapping(activeConfig.mapping[i]);
                         else
-                            monitoredProcesses[proc.Key]++;
+                            mappingName = Mapping.GetNameFromScancode(activeConfig.mapping[i]) + "(" + activeConfig.mapping[i] + ")";
                     }
+
+                    MappingGrid.Rows.Add(new object[2] { XIManager.xinputButtonNames[i], mappingName });
                 }
-
-                Thread.Sleep(1000);
             }
-        }
-
-        private static void ProcessStart_EventArrived(object sender, EventArrivedEventArgs e)
-        {
-            string name = e.NewEvent.Properties["ProcessName"].Value.ToString();
-            int extensionStart = name.IndexOf('.');
-            name = name.Substring(0, extensionStart);
-
-            foreach(Process proc in Process.GetProcessesByName(name))
-                monitoredProcesses.Add(proc, 0);
         }
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            processStartEvent.EventArrived += new EventArrivedEventHandler(ProcessStart_EventArrived);
-            processStartEvent.Start();
+            RefreshMappingView();
 
-            DIManager.Init();
-            WinAPI.GetLLAddress();
-
-            deviceList_DropDown(null, null);
-
-            programState = new ProgramState { mappingIndex = 0, selectedConfig = "" };
-
-            currentConfig = new Configuration
-            {
-                mapping = new Mapping.MappingConfig[4]
-                {
-                    new Mapping.MappingConfig(),
-                    new Mapping.MappingConfig(),
-                    new Mapping.MappingConfig(),
-                    new Mapping.MappingConfig()
-                },
-                searchMethod = 0,
-                targetProcess = ""
-            };
-
-            Task injectTask = Task.Run((Action)FindProcessTask);
-
-            IPC.Init((uint)currentConfig.mapping[0].ToByteArray().Length * 24);
-            
-            RefreshActiveController();
         }
 
-        private void deviceList_DropDown(object sender, EventArgs e)
+        private void MainTabs_SelectedIndexChanged(object sender, EventArgs e)
         {
-            deviceList.Items.Clear();
-            deviceList.Items.Add("None");
-            deviceList.Items.Add("Keyboard");
-
-            foreach (Joystick joy in DIManager.GetGamepads())
-                deviceList.Items.Add(joy.Information.ProductName);
-        }
-
-        private void deviceList_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (deviceList.SelectedItem.ToString() == "None")
+            if(MainTabs.SelectedIndex < 4)
             {
-                currentConfig.mapping[programState.mappingIndex].ChangeDeviceType(Mapping.MappedDeviceType.None);
+                Control[] controls = new Control[MainTabs.TabPages[Program.programState.mappingIndex].Controls.Count];
+                MainTabs.TabPages[Program.programState.mappingIndex].Controls.CopyTo(controls, 0);
+                MainTabs.TabPages[Program.programState.mappingIndex].Controls.Clear();
+                MainTabs.TabPages[MainTabs.SelectedIndex].Controls.AddRange(controls);
+
+                Program.programState.mappingIndex = MainTabs.SelectedIndex;
+
+                RefreshMappingView();
             }
-            else if (deviceList.SelectedItem.ToString() == "Keyboard")
-            {
-                currentConfig.mapping[programState.mappingIndex].ChangeDeviceType(Mapping.MappedDeviceType.Keyboard);
+        }
+
+        private void DeviceCombo_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            var activeConfig = Program.currentConfig.mapping[Program.programState.mappingIndex];
+
+            if (DeviceCombo.SelectedIndex == 0)
+            { 
+                activeConfig.deviceType = Mapping.MappedDeviceType.None;
+            }
+            else if (DeviceCombo.SelectedIndex == 1)
+            { 
+                activeConfig.deviceType = Mapping.MappedDeviceType.Keyboard;
             }
             else
             {
-                currentConfig.mapping[programState.mappingIndex].ChangeDeviceType(Mapping.MappedDeviceType.Controller);
-                currentConfig.mapping[programState.mappingIndex].deviceGuid = DIManager.GetGamepadIDFromName(deviceList.SelectedItem.ToString()).ToString();
+                activeConfig.deviceType = Mapping.MappedDeviceType.Controller;
+                activeConfig.deviceGuid = DIManager.GetGamepadIDFromName(DeviceCombo.SelectedItem.ToString()).ToString();
             }
 
-            RefreshActiveController();
+            for (int i = 0; i < activeConfig.mapping.Length; i++)
+                Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[i] = 0;
+
+            RefreshMappingView();
         }
 
-        private void convertGrid_CellClick(object sender, DataGridViewCellEventArgs e)
+        private void DeviceCombo_DropDown(object sender, EventArgs e)
         {
-            if (e.ColumnIndex == 1 && e.RowIndex >= 0)
+            DeviceCombo.Items.Clear();
+
+            DeviceCombo.Items.Add("None");
+            DeviceCombo.Items.Add("Keyboard");
+
+            foreach(var joystick in DIManager.GetGamepads())
+                DeviceCombo.Items.Add(joystick.Properties.ProductName);
+        }
+
+        private void MappingGrid_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            var activeConfig = Program.currentConfig.mapping[Program.programState.mappingIndex];
+
+            if (e.ColumnIndex == 1)
             {
-                var config = currentConfig.mapping[controllerSelect.SelectedIndex];
-
-                if (config.deviceType == Mapping.MappedDeviceType.None)
-                {
-                    MessageBox.Show("Select a device to use first.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                inputDialog = new InputDialog(config.deviceType == Mapping.MappedDeviceType.Keyboard ? Guid.Empty : new Guid(currentConfig.mapping[programState.mappingIndex].deviceGuid));
+                inputDialog = new InputDialog(activeConfig.deviceType == Mapping.MappedDeviceType.Keyboard ? Guid.Empty : new Guid(activeConfig.deviceGuid));
 
                 var result = inputDialog.ShowDialog();
-                
+
                 if(result != DialogResult.Cancel)
                 {
-                    if(config.deviceType == Mapping.MappedDeviceType.Keyboard)
-                    {
-                        convertGrid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = Mapping.GetNameFromScancode(inputDialog.resultScancode) + " (" + inputDialog.resultScancode + ")";
-                        currentConfig.mapping[controllerSelect.SelectedIndex].mapping[e.RowIndex] = (ushort)inputDialog.resultScancode;
-                    }
+                    if(activeConfig.deviceType == Mapping.MappedDeviceType.Keyboard)
+                        Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[e.RowIndex] = inputDialog.resultScancode;
                     else
-                    {
-                        convertGrid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = DIManager.GetNameFromMapping(inputDialog.resultJoystickMapping);
-                        currentConfig.mapping[controllerSelect.SelectedIndex].mapping[e.RowIndex] = inputDialog.resultJoystickMapping;
-                    }
+                        Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[e.RowIndex] = inputDialog.resultJoystickMapping;
                 }
                 else
                 {
-                    convertGrid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = "<empty>";
-                    currentConfig.mapping[controllerSelect.SelectedIndex].mapping[e.RowIndex] = 0;
+                    Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[e.RowIndex] = 0;
                 }
+
+                int offset = MappingGrid.FirstDisplayedScrollingRowIndex;
+
+                RefreshMappingView();
+
+                MappingGrid.CurrentCell = MappingGrid.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                MappingGrid.FirstDisplayedScrollingRowIndex = offset;
             }
         }
-
-        private void targetCombo_DropDown(object sender, EventArgs e)
+        
+        private void ProcessCombo_DropDown(object sender, EventArgs e)
         {
-            List<string> procList = new List<string>();
+            ProcessCombo.Items.Clear();
 
-            foreach (Process proc in Process.GetProcesses())
-                if (proc.MainWindowTitle != string.Empty)
-                    procList.Add(proc.ProcessName + ".exe");
-            
-            procList = procList.Distinct().ToList();
-            procList.Sort();
-
-            targetCombo.Items.Clear();
-
-            foreach(string proc in procList)
-                targetCombo.Items.Add(proc);    
+            foreach(Process proc in Process.GetProcesses())
+                if(proc.MainWindowTitle != "")
+                    ProcessCombo.Items.Add(proc.ProcessName);
         }
 
-        private void tabControl1_Selecting(object sender, TabControlEventArgs e)
+        private void SingleRadio_CheckedChanged(object sender, EventArgs e)
         {
-            programState.mappingIndex = e.TabPageIndex;
-            RefreshActiveController();
+            if(SingleRadio.Checked)
+                InjectMethod.ChangeSearchMethod(InjectMethod.SearchMethod.SingleProcess);
+            else
+                InjectMethod.ChangeSearchMethod(InjectMethod.SearchMethod.ProcessWatcher);
         }
 
-        private void btnSave_Click(object sender, EventArgs e)
+        private void ProcessCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if(configCombo.Text != "")
-            {
-                if (!Directory.Exists(configFolder))
-                    Directory.CreateDirectory(configFolder);
-
-                XmlSerializer configSerializer = new XmlSerializer(typeof(Configuration));
-
-                using (TextWriter textWritter = new StreamWriter(configFolder + configCombo.Text + ".xml"))
-                {
-                    configSerializer.Serialize(textWritter, currentConfig);
-                }
-            }
-        }
-
-        private void configCombo_DropDown(object sender, EventArgs e)
-        {
-            if(Directory.Exists(configFolder))
-            {
-                configCombo.Items.Clear();
-
-                foreach(string file in Directory.EnumerateFiles(configFolder, "*.xml"))
-                {
-                    int start = file.LastIndexOf('/') + 1;
-                    configCombo.Items.Add(file.Substring(start, file.Length - start - 4));
-                }
-            }
-        }
-
-        private void configCombo_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if(LoadConfig(configCombo.Text))
-                RefreshActiveController();
-        }
-
-        private void searchMethod_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            currentConfig.searchMethod = searchMethod.SelectedIndex;
-        }
-
-        private void targetCombo_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            currentConfig.targetProcess = targetCombo.SelectedItem.ToString();
-        }
-
-        private void targetCombo_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            e.Handled = true;
+            InjectMethod.SetTargetProcess(ProcessCombo.SelectedItem.ToString());
         }
     }
 }
