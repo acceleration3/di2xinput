@@ -66,10 +66,31 @@ namespace di2xinput
             }
         }
 
+        private void ShowMappingDialog(int index)
+        {
+            var activeConfig = Program.currentConfig.mapping[Program.programState.mappingIndex];
+
+            inputDialog = new InputDialog(XIManager.xinputButtonNames[index], activeConfig.deviceType == Mapping.MappedDeviceType.Keyboard ? Guid.Empty : new Guid(activeConfig.deviceGuid));
+
+            var result = inputDialog.ShowDialog();
+
+            if (result != DialogResult.Cancel)
+            {
+                if (activeConfig.deviceType == Mapping.MappedDeviceType.Keyboard)
+                    Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[index] = inputDialog.resultScancode;
+                else
+                    Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[index] = inputDialog.resultJoystickMapping;
+            }
+            else
+            {
+                Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[index] = 0;
+            }
+        }
+
         private void MainForm_Load(object sender, EventArgs e)
         {
+            DeviceCombo_DropDown(null, null);
             RefreshMappingView();
-
         }
 
         private void MainTabs_SelectedIndexChanged(object sender, EventArgs e)
@@ -121,28 +142,13 @@ namespace di2xinput
             foreach(var joystick in DIManager.GetGamepads())
                 DeviceCombo.Items.Add(joystick.Properties.ProductName);
         }
+        
 
         private void MappingGrid_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            var activeConfig = Program.currentConfig.mapping[Program.programState.mappingIndex];
-
-            if (e.ColumnIndex == 1)
+            if(e.RowIndex >= 0 && e.ColumnIndex == 1)
             {
-                inputDialog = new InputDialog(activeConfig.deviceType == Mapping.MappedDeviceType.Keyboard ? Guid.Empty : new Guid(activeConfig.deviceGuid));
-
-                var result = inputDialog.ShowDialog();
-
-                if(result != DialogResult.Cancel)
-                {
-                    if(activeConfig.deviceType == Mapping.MappedDeviceType.Keyboard)
-                        Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[e.RowIndex] = inputDialog.resultScancode;
-                    else
-                        Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[e.RowIndex] = inputDialog.resultJoystickMapping;
-                }
-                else
-                {
-                    Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[e.RowIndex] = 0;
-                }
+                ShowMappingDialog(e.RowIndex);
 
                 int offset = MappingGrid.FirstDisplayedScrollingRowIndex;
 
@@ -173,6 +179,45 @@ namespace di2xinput
         private void ProcessCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
             InjectMethod.SetTargetProcess(ProcessCombo.SelectedItem.ToString());
+        }
+
+        private void AssignButton_Click(object sender, EventArgs e)
+        {
+            for (int i = 0; i < XIManager.xinputButtonNames.Count; i++)
+                ShowMappingDialog(i);
+        }
+
+        private void ConfigCombo_DropDown(object sender, EventArgs e)
+        {
+            ConfigCombo.Items.Clear();
+
+            foreach (string confFile in Directory.EnumerateFiles(Program.configFolder, "*.xml"))
+            {
+                string confName = confFile.Substring(confFile.LastIndexOf('/') + 1);
+                confName = confName.Substring(0, confName.Length - 4);
+                ConfigCombo.Items.Add(confName);
+            }
+        }
+
+        private void ConfigCombo_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (ConfigCombo.SelectedIndex >= 0)
+                if (Program.LoadConfig(ConfigCombo.SelectedItem.ToString()))
+                    RefreshMappingView();
+        }
+
+        private void SaveButton_Click(object sender, EventArgs e)
+        {
+            if (ConfigCombo.Text != "")
+            {
+                if (!Directory.Exists(Program.configFolder))
+                    Directory.CreateDirectory(Program.configFolder);
+
+                XmlSerializer configSerializer = new XmlSerializer(typeof(Program.Configuration));
+
+                using (TextWriter textWritter = new StreamWriter(Program.configFolder + ConfigCombo.Text + ".xml"))
+                    configSerializer.Serialize(textWritter, Program.currentConfig);
+            }
         }
     }
 }

@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "IPC.h"
 
+#include "ControllerManager.h"
+
 HANDLE IPC::pipeHandle = NULL;
 std::thread IPC::pipeThread;
 
@@ -28,16 +30,16 @@ void IPC::PipeThread()
 				continue;
 			}
 
-			uint8_t* buffer = new uint8_t[messageLength];
+			std::vector<uint8_t> mappingBuffer(messageLength, '\x00');
 
-			if (!ReadFile(pipeHandle, buffer, messageLength, &bytesRead, NULL))
+			if (!ReadFile(pipeHandle, &mappingBuffer[0], messageLength, &bytesRead, NULL))
 			{
 				std::cout << "Failed to read message. Error: " << GetLastError() << std::endl;
 				readPipe = false;
 				continue;
 			}
 
-			std::cout << "Got pipe message with length " << messageLength << std::endl;
+			ControllerManager::SetMappingsFromBuffer(mappingBuffer);
 		}
 
 		DisconnectNamedPipe(pipeHandle);

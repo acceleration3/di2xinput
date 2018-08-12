@@ -35,7 +35,6 @@
             this.SaveButton = new System.Windows.Forms.Button();
             this.MainTabs = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
-            this.AssignButton = new System.Windows.Forms.Button();
             this.DeviceCombo = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.ControllerPicture = new System.Windows.Forms.PictureBox();
@@ -46,11 +45,12 @@
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.tabPage4 = new System.Windows.Forms.TabPage();
             this.tabPage5 = new System.Windows.Forms.TabPage();
-            this.imageList = new System.Windows.Forms.ImageList(this.components);
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.SingleRadio = new System.Windows.Forms.RadioButton();
             this.ProcessCombo = new System.Windows.Forms.ComboBox();
             this.WatcherRadio = new System.Windows.Forms.RadioButton();
+            this.imageList = new System.Windows.Forms.ImageList(this.components);
+            this.label3 = new System.Windows.Forms.Label();
             this.MainTabs.SuspendLayout();
             this.tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.ControllerPicture)).BeginInit();
@@ -77,6 +77,8 @@
             this.ConfigCombo.Name = "ConfigCombo";
             this.ConfigCombo.Size = new System.Drawing.Size(477, 21);
             this.ConfigCombo.TabIndex = 6;
+            this.ConfigCombo.DropDown += new System.EventHandler(this.ConfigCombo_DropDown);
+            this.ConfigCombo.SelectedIndexChanged += new System.EventHandler(this.ConfigCombo_SelectedIndexChanged);
             // 
             // SaveButton
             // 
@@ -87,6 +89,7 @@
             this.SaveButton.TabIndex = 7;
             this.SaveButton.Text = "Save";
             this.SaveButton.UseVisualStyleBackColor = true;
+            this.SaveButton.Click += new System.EventHandler(this.SaveButton_Click);
             // 
             // MainTabs
             // 
@@ -107,7 +110,6 @@
             // 
             // tabPage1
             // 
-            this.tabPage1.Controls.Add(this.AssignButton);
             this.tabPage1.Controls.Add(this.DeviceCombo);
             this.tabPage1.Controls.Add(this.label1);
             this.tabPage1.Controls.Add(this.ControllerPicture);
@@ -119,16 +121,6 @@
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "Controller 1";
             this.tabPage1.UseVisualStyleBackColor = true;
-            // 
-            // AssignButton
-            // 
-            this.AssignButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.AssignButton.Location = new System.Drawing.Point(346, 354);
-            this.AssignButton.Name = "AssignButton";
-            this.AssignButton.Size = new System.Drawing.Size(240, 23);
-            this.AssignButton.TabIndex = 6;
-            this.AssignButton.Text = "Assign all buttons";
-            this.AssignButton.UseVisualStyleBackColor = true;
             // 
             // DeviceCombo
             // 
@@ -193,7 +185,7 @@
             this.MappingGrid.ShowCellToolTips = false;
             this.MappingGrid.ShowEditingIcon = false;
             this.MappingGrid.ShowRowErrors = false;
-            this.MappingGrid.Size = new System.Drawing.Size(240, 315);
+            this.MappingGrid.Size = new System.Drawing.Size(240, 344);
             this.MappingGrid.TabIndex = 0;
             this.MappingGrid.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.MappingGrid_CellClick);
             // 
@@ -248,20 +240,15 @@
             this.tabPage5.Text = "Settings";
             this.tabPage5.UseVisualStyleBackColor = true;
             // 
-            // imageList
-            // 
-            this.imageList.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("imageList.ImageStream")));
-            this.imageList.TransparentColor = System.Drawing.Color.Transparent;
-            this.imageList.Images.SetKeyName(0, "Xbox_Controller (1).png");
-            // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.label3);
             this.groupBox1.Controls.Add(this.SingleRadio);
             this.groupBox1.Controls.Add(this.ProcessCombo);
             this.groupBox1.Controls.Add(this.WatcherRadio);
             this.groupBox1.Location = new System.Drawing.Point(12, 12);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(294, 92);
+            this.groupBox1.Size = new System.Drawing.Size(296, 142);
             this.groupBox1.TabIndex = 1;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Search Method";
@@ -283,9 +270,9 @@
             // 
             this.ProcessCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.ProcessCombo.FormattingEnabled = true;
-            this.ProcessCombo.Location = new System.Drawing.Point(106, 31);
+            this.ProcessCombo.Location = new System.Drawing.Point(117, 31);
             this.ProcessCombo.Name = "ProcessCombo";
-            this.ProcessCombo.Size = new System.Drawing.Size(176, 21);
+            this.ProcessCombo.Size = new System.Drawing.Size(173, 21);
             this.ProcessCombo.TabIndex = 2;
             this.ProcessCombo.DropDown += new System.EventHandler(this.ProcessCombo_DropDown);
             this.ProcessCombo.SelectedIndexChanged += new System.EventHandler(this.ProcessCombo_SelectedIndexChanged);
@@ -295,10 +282,25 @@
             this.WatcherRadio.AutoSize = true;
             this.WatcherRadio.Location = new System.Drawing.Point(6, 58);
             this.WatcherRadio.Name = "WatcherRadio";
-            this.WatcherRadio.Size = new System.Drawing.Size(107, 17);
+            this.WatcherRadio.Size = new System.Drawing.Size(104, 17);
             this.WatcherRadio.TabIndex = 1;
-            this.WatcherRadio.Text = "Process Watcher";
+            this.WatcherRadio.Text = "Process watcher";
             this.WatcherRadio.UseVisualStyleBackColor = true;
+            // 
+            // imageList
+            // 
+            this.imageList.ImageStream = ((System.Windows.Forms.ImageListStreamer)(resources.GetObject("imageList.ImageStream")));
+            this.imageList.TransparentColor = System.Drawing.Color.Transparent;
+            this.imageList.Images.SetKeyName(0, "Xbox_Controller (1).png");
+            // 
+            // label3
+            // 
+            this.label3.Location = new System.Drawing.Point(3, 114);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(289, 25);
+            this.label3.TabIndex = 3;
+            this.label3.Text = "Status: No process selected.";
+            this.label3.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // MainForm
             // 
@@ -341,13 +343,13 @@
         private System.Windows.Forms.ImageList imageList;
         private System.Windows.Forms.ComboBox DeviceCombo;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Button AssignButton;
         private System.Windows.Forms.DataGridViewTextBoxColumn Column1;
         private System.Windows.Forms.DataGridViewTextBoxColumn Column2;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.RadioButton SingleRadio;
         private System.Windows.Forms.ComboBox ProcessCombo;
         private System.Windows.Forms.RadioButton WatcherRadio;
+        private System.Windows.Forms.Label label3;
     }
 }
 

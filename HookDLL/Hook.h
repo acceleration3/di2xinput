@@ -1,11 +1,8 @@
 #pragma once
 
-#include <Xinput.h>
-
 class Hook
 {
 public:
-
 	typedef DWORD(WINAPI* _XInputGetState)
 	(
 		_In_  DWORD         dwUserIndex,  // Index of the gamer associated with the device
@@ -19,9 +16,9 @@ public:
 		_Out_ XINPUT_CAPABILITIES* pCapabilities  // Receives the capabilities
 	);
 
-	static std::vector<std::string> xinput_modules;
-	static _XInputGetState original_XInputGetState;
-	static _XInputGetCapabilities original_XInputGetCapabilities;
+	static std::vector<std::string> xinputModules;
+	static _XInputGetState originalXInputGetState;
+	static _XInputGetCapabilities originalXInputGetCapabilities;
 
 	static void HookXInput();
 	static void UnhookXInput();

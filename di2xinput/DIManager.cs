@@ -52,13 +52,9 @@ namespace di2xinput
             var guid = new Guid(id);
 
             if(gamepads.ContainsKey(guid))
-            {
                 return gamepads[guid];
-            }
             else
-            {
                 return null;
-            }
         }
 
         public static string GetNameFromMapping(ushort mapping)

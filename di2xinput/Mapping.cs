@@ -37,8 +37,6 @@ namespace di2xinput
                 byteArray.AddRange(BitConverter.GetBytes(deviceGuid.Length));
                 byteArray.AddRange(Encoding.ASCII.GetBytes(deviceGuid));
 
-                byteArray.AddRange(BitConverter.GetBytes(mapping.Length));
-
                 for (int i = 0; i < mapping.Length; i++)
                     byteArray.AddRange(BitConverter.GetBytes(mapping[i]));
 

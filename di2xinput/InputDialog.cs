@@ -49,11 +49,13 @@ namespace di2xinput
             }
         }
 
-        public InputDialog(Guid deviceGuid)
+        public InputDialog(string mapping, Guid deviceGuid)
         {
             InitializeComponent();
 
             this.deviceGuid = deviceGuid;
+
+            label1.Text = "Press the button to map " + mapping.ToUpper() + "\nor\nClose this dialog to cancel the mapping";
 
             if (deviceGuid == Guid.Empty)
             {
@@ -90,11 +92,6 @@ namespace di2xinput
                 DialogResult = DialogResult.OK;
                 Close();
             }
-        }
-
-        private void label1_Click(object sender, EventArgs e)
-        {
-
         }
 
         private void InputDialog_FormClosed(object sender, FormClosedEventArgs e)

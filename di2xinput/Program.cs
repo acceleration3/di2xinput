@@ -10,13 +10,14 @@ using System.Xml.Serialization;
 
 namespace di2xinput
 {
-    static class Program
+    public static class Program
     {
         public struct ProgramState
         {
             public int mappingIndex;
             public string selectedConfig;
         }
+
         public struct Configuration
         {
             public int searchMethod;
@@ -42,7 +43,7 @@ namespace di2xinput
             targetProcess = ""
         };
 
-        private const string configFolder = "./configs/";
+        public const string configFolder = "./configs/";
         
         public static MemoryStream GetMappings()
         {
@@ -60,11 +61,11 @@ namespace di2xinput
         public static bool LoadConfig(string config)
         {
             if (File.Exists(configFolder + config + ".xml"))
-            {
-                XmlSerializer configSerializer = new XmlSerializer(typeof(Configuration));
-
+            {              
                 try
                 {
+                    XmlSerializer configSerializer = new XmlSerializer(typeof(Configuration));
+
                     Configuration newConfig;
 
                     using (TextReader textReader = new StreamReader(configFolder + config + ".xml"))
