@@ -69,6 +69,7 @@ namespace di2xinput
             {
                 acquiredJoystick = DIManager.GetJoystickFromID(deviceGuid.ToString());
 
+                acquiredJoystick.Properties.DeadZone = 7500;
                 acquiredJoystick.Properties.AxisMode = DeviceAxisMode.Absolute;
                 acquiredJoystick.SetCooperativeLevel(this.Handle, (CooperativeLevel.NonExclusive | CooperativeLevel.Background));
                 acquiredJoystick.Acquire();
@@ -102,6 +103,11 @@ namespace di2xinput
                 inputTimer.Enabled = false;
                 inputTimer.Stop();
             }
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

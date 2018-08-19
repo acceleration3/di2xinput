@@ -1,8 +1,12 @@
 #pragma once
+
+#include <Xinput.h>
+
 class Controller
 {
 
 public:
+
 	typedef enum
 	{
 		NONE,

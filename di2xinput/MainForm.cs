@@ -1,38 +1,108 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
-using System.IO.Pipes;
 using System.Linq;
-using System.Management;
-using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Xml;
 using System.Xml.Serialization;
-using SharpDX.DirectInput;
 
 namespace di2xinput
 {
     public partial class MainForm : Form
     {
         public static InputDialog inputDialog;
+        private static int currentIndex = 0;
 
         public MainForm()
         {
             InitializeComponent();
         }
+        
+        private Tuple<int, string> GetXInputVersion(string filename, int entryIndex)
+        {
+            string version = "Unknown";
+
+            ProcessStartInfo processStartInfo = new ProcessStartInfo()
+            {
+                WindowStyle = ProcessWindowStyle.Minimized,
+                UseShellExecute = true,
+                WorkingDirectory = filename.Substring(0, filename.LastIndexOf("\\") + 1),
+                FileName = filename
+            };
+
+            Process proc = Process.Start(processStartInfo);
+
+            WinAPI.BinaryType binaryType;
+            WinAPI.GetBinaryType(filename, out binaryType);
+
+            for(int i = 0; i < 10; i++)
+            {
+                if(proc.HasExited)
+                    break;
+            
+                var xinputDLLx86 = WinAPI.GetModuleNames(proc).Where(x => x.ToLower().Contains("xinput")).FirstOrDefault();
+                var xinputDLLx64 = WinAPI.GetModuleNames(proc, true).Where(x => x.ToLower().Contains("xinput")).FirstOrDefault();
+
+                if (xinputDLLx86 != null)
+                {
+                    version = xinputDLLx86.ToLower();
+                    version = version.Substring(version.LastIndexOf("\\") + 1).Replace("xinput", "");
+                    version = version.Substring(0, version.Length - 4);
+                    version += " x86";
+                    break;
+                }
+                else if (xinputDLLx64 != null)
+                {
+                    version = xinputDLLx64.ToLower();
+                    version = version.Substring(version.LastIndexOf("\\") + 1).Replace("xinput", "");
+                    version = version.Substring(0, version.Length - 4);
+                    version += " x64";
+                    break;
+                }
+
+                Thread.Sleep(1000);
+            }
+
+            if(!proc.HasExited)
+                proc.Kill();
+
+            if (version == "Unknown")
+                version += binaryType == WinAPI.BinaryType.SCS_32BIT_BINARY ? " x86" : " x64";
+
+            return new Tuple<int, string>(entryIndex, version);
+        }
+       
+        private void RefreshProgramGrid()
+        {
+            this.BeginInvoke(new Action(() =>
+            {
+                Program.RefreshProfiles();
+
+                ProfileColumn.Items.Clear();
+                foreach (var profile in Program.profiles)
+                    ProfileColumn.Items.Add(profile.Key);
+
+                ProgramGrid.Rows.Clear();
+
+                foreach (var entry in Program.programSettings.entries)
+                {
+                    Icon icon = Icon.ExtractAssociatedIcon(entry.path);
+                    ProgramGrid.Rows.Add(new object[4] { icon, entry.path, entry.XIVersion, entry.profile});
+                }
+            }));
+        }
 
         private void RefreshMappingView()
         {
-            var activeConfig = Program.currentConfig.mapping[Program.programState.mappingIndex];
+            var activeConfig = Program.activeProfile.mapping[currentIndex];
 
             //Update DeviceCombo
-
             DeviceCombo.SelectedIndexChanged -= new EventHandler(DeviceCombo_SelectedIndexChanged);
 
             if (activeConfig.deviceType == Mapping.MappedDeviceType.None)
@@ -43,6 +113,12 @@ namespace di2xinput
                 DeviceCombo.Text = DIManager.GetJoystickFromID(activeConfig.deviceGuid).Properties.ProductName;
 
             DeviceCombo.SelectedIndexChanged += new EventHandler(DeviceCombo_SelectedIndexChanged);
+
+            //Update profiles
+            Program.RefreshProfiles();
+            ProfileCombo_DropDown(null, null);
+            ProfileColumn.Items.Clear();
+            ProfileColumn.Items.AddRange(Program.profiles.ToArray());
 
             //Update MappingGrid
             MappingGrid.Rows.Clear();
@@ -66,9 +142,9 @@ namespace di2xinput
             }
         }
 
-        private void ShowMappingDialog(int index)
+        private static void ShowMappingDialog(int index)
         {
-            var activeConfig = Program.currentConfig.mapping[Program.programState.mappingIndex];
+            var activeConfig = Program.activeProfile.mapping[currentIndex];
 
             inputDialog = new InputDialog(XIManager.xinputButtonNames[index], activeConfig.deviceType == Mapping.MappedDeviceType.Keyboard ? Guid.Empty : new Guid(activeConfig.deviceGuid));
 
@@ -77,32 +153,37 @@ namespace di2xinput
             if (result != DialogResult.Cancel)
             {
                 if (activeConfig.deviceType == Mapping.MappedDeviceType.Keyboard)
-                    Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[index] = inputDialog.resultScancode;
+                    Program.activeProfile.mapping[currentIndex].mapping[index] = inputDialog.resultScancode;
                 else
-                    Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[index] = inputDialog.resultJoystickMapping;
+                    Program.activeProfile.mapping[currentIndex].mapping[index] = inputDialog.resultJoystickMapping;
             }
             else
             {
-                Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[index] = 0;
+                Program.activeProfile.mapping[currentIndex].mapping[index] = 0;
             }
         }
 
         private void MainForm_Load(object sender, EventArgs e)
         {
+            Program.RefreshProfiles();
             DeviceCombo_DropDown(null, null);
-            RefreshMappingView();
+            ProfileCombo_DropDown(null, null);
+            RefreshProgramGrid();
+
+            foreach(var entry in Program.programSettings.entries)
+                Program.ApplyConfigToEntry(entry);
         }
 
         private void MainTabs_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if(MainTabs.SelectedIndex < 4)
+            if (MainTabs.SelectedIndex < 4)
             {
-                Control[] controls = new Control[MainTabs.TabPages[Program.programState.mappingIndex].Controls.Count];
-                MainTabs.TabPages[Program.programState.mappingIndex].Controls.CopyTo(controls, 0);
-                MainTabs.TabPages[Program.programState.mappingIndex].Controls.Clear();
+                Control[] controls = new Control[MainTabs.TabPages[currentIndex].Controls.Count];
+                MainTabs.TabPages[currentIndex].Controls.CopyTo(controls, 0);
+                MainTabs.TabPages[currentIndex].Controls.Clear();
                 MainTabs.TabPages[MainTabs.SelectedIndex].Controls.AddRange(controls);
 
-                Program.programState.mappingIndex = MainTabs.SelectedIndex;
+                currentIndex = MainTabs.SelectedIndex;
 
                 RefreshMappingView();
             }
@@ -110,14 +191,14 @@ namespace di2xinput
 
         private void DeviceCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
-            var activeConfig = Program.currentConfig.mapping[Program.programState.mappingIndex];
+            var activeConfig = Program.activeProfile.mapping[currentIndex];
 
             if (DeviceCombo.SelectedIndex == 0)
-            { 
+            {
                 activeConfig.deviceType = Mapping.MappedDeviceType.None;
             }
             else if (DeviceCombo.SelectedIndex == 1)
-            { 
+            {
                 activeConfig.deviceType = Mapping.MappedDeviceType.Keyboard;
             }
             else
@@ -127,7 +208,7 @@ namespace di2xinput
             }
 
             for (int i = 0; i < activeConfig.mapping.Length; i++)
-                Program.currentConfig.mapping[Program.programState.mappingIndex].mapping[i] = 0;
+                Program.activeProfile.mapping[currentIndex].mapping[i] = 0;
 
             RefreshMappingView();
         }
@@ -139,14 +220,14 @@ namespace di2xinput
             DeviceCombo.Items.Add("None");
             DeviceCombo.Items.Add("Keyboard");
 
-            foreach(var joystick in DIManager.GetGamepads())
+            foreach (var joystick in DIManager.GetGamepads())
                 DeviceCombo.Items.Add(joystick.Properties.ProductName);
         }
-        
+
 
         private void MappingGrid_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if(e.RowIndex >= 0 && e.ColumnIndex == 1)
+            if (e.RowIndex >= 0 && e.ColumnIndex == 1)
             {
                 ShowMappingDialog(e.RowIndex);
 
@@ -158,28 +239,6 @@ namespace di2xinput
                 MappingGrid.FirstDisplayedScrollingRowIndex = offset;
             }
         }
-        
-        private void ProcessCombo_DropDown(object sender, EventArgs e)
-        {
-            ProcessCombo.Items.Clear();
-
-            foreach(Process proc in Process.GetProcesses())
-                if(proc.MainWindowTitle != "")
-                    ProcessCombo.Items.Add(proc.ProcessName);
-        }
-
-        private void SingleRadio_CheckedChanged(object sender, EventArgs e)
-        {
-            if(SingleRadio.Checked)
-                InjectMethod.ChangeSearchMethod(InjectMethod.SearchMethod.SingleProcess);
-            else
-                InjectMethod.ChangeSearchMethod(InjectMethod.SearchMethod.ProcessWatcher);
-        }
-
-        private void ProcessCombo_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            InjectMethod.SetTargetProcess(ProcessCombo.SelectedItem.ToString());
-        }
 
         private void AssignButton_Click(object sender, EventArgs e)
         {
@@ -187,37 +246,86 @@ namespace di2xinput
                 ShowMappingDialog(i);
         }
 
-        private void ConfigCombo_DropDown(object sender, EventArgs e)
+        private void ProfileCombo_DropDown(object sender, EventArgs e)
         {
-            ConfigCombo.Items.Clear();
-
-            foreach (string confFile in Directory.EnumerateFiles(Program.configFolder, "*.xml"))
-            {
-                string confName = confFile.Substring(confFile.LastIndexOf('/') + 1);
-                confName = confName.Substring(0, confName.Length - 4);
-                ConfigCombo.Items.Add(confName);
-            }
+            BindingSource bs = new BindingSource();
+            bs.DataSource = Program.profiles.Keys.ToList();
+            ProfileCombo.DataSource = bs;
         }
 
-        private void ConfigCombo_SelectedIndexChanged(object sender, EventArgs e)
+        private void ProfileCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (ConfigCombo.SelectedIndex >= 0)
-                if (Program.LoadConfig(ConfigCombo.SelectedItem.ToString()))
-                    RefreshMappingView();
+            if (ProfileCombo.SelectedIndex >= 0)
+            {
+                Program.activeProfile = Program.profiles[ProfileCombo.SelectedValue.ToString()];
+                RefreshMappingView();
+            }
         }
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
-            if (ConfigCombo.Text != "")
+            if (ProfileCombo.Text != "")
             {
-                if (!Directory.Exists(Program.configFolder))
-                    Directory.CreateDirectory(Program.configFolder);
+                if (!Directory.Exists(Program.profileFolder))
+                    Directory.CreateDirectory(Program.profileFolder);
 
-                XmlSerializer configSerializer = new XmlSerializer(typeof(Program.Configuration));
+                XmlSerializer configSerializer = new XmlSerializer(typeof(Program.Profile));
 
-                using (TextWriter textWritter = new StreamWriter(Program.configFolder + ConfigCombo.Text + ".xml"))
-                    configSerializer.Serialize(textWritter, Program.currentConfig);
+                using (TextWriter textWritter = new StreamWriter(Program.profileFolder + ProfileCombo.Text + ".xml"))
+                    configSerializer.Serialize(textWritter, Program.activeProfile);
             }
+        }
+
+        private void AddButton_Click(object sender, EventArgs e)
+        {
+            if(Program.profiles.Count == 0)
+            {
+                MessageBox.Show("No profiles have been created. Please create a new profile.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            var result = openProgramDialog.ShowDialog();
+
+            if(result == DialogResult.OK)
+            {
+                string fileName = openProgramDialog.FileName;
+                int entryIndex = Program.programSettings.entries.Count;
+
+                if (Program.programSettings.entries.Any(x => x.path == fileName))
+                {
+                    MessageBox.Show("This program has already been added.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                var entry = new Program.ProgramEntry()
+                {
+                    path = fileName,
+                    profile = Program.profiles.First().Key,
+                    XIVersion = "Finding..."
+                };
+                
+                Program.programSettings.entries.Add(entry);
+                RefreshProgramGrid();
+
+                Task<Tuple<int, string>> getVersionTask = new Task<Tuple<int, string>>(() =>
+                {
+                    return GetXInputVersion(fileName, entryIndex);
+                });
+
+                getVersionTask.Start();
+
+                getVersionTask.ContinueWith(task =>
+                {
+                    Program.programSettings.entries[task.Result.Item1].XIVersion = task.Result.Item2;
+                    RefreshProgramGrid();
+                    Program.ApplyConfigToEntry(Program.programSettings.entries[task.Result.Item1]);
+                });
+            }
+        }
+
+        private void RemoveButton_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

@@ -18,12 +18,6 @@ namespace di2xinput
         public static extern IntPtr GetKeyboardLayout(uint idThread);
 
         [DllImport("user32.dll")]
-        public static extern short GetAsyncKeyState(System.Windows.Forms.Keys vKey);
-
-        [DllImport("user32.dll")]
-        public static extern short GetKeyState(System.Windows.Forms.Keys vKey);
-
-        [DllImport("user32.dll")]
         public static extern uint MapVirtualKeyEx(uint uCode, uint uMapType, IntPtr dwhkl);
 
         [DllImport("user32.dll")]
@@ -32,54 +26,14 @@ namespace di2xinput
         [DllImport("user32.dll")]
         public static extern int GetKeyNameText(uint lParam, [Out] StringBuilder lpString, int nSize);
 
-        [DllImport("kernel32.dll")]
-        public static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
-        public static extern IntPtr GetModuleHandle(string lpModuleName);
-
-        [DllImport("kernel32", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
-        public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
-
-        [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
-        public static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress, uint dwSize, uint flAllocationType, uint flProtect);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, uint nSize, out UIntPtr lpNumberOfBytesWritten);
-
-        [DllImport("kernel32.dll")]
-        public static extern IntPtr CreateRemoteThread(IntPtr hProcess, IntPtr lpThreadAttributes, uint dwStackSize, IntPtr lpStartAddress, IntPtr lpParameter, uint dwCreationFlags, IntPtr lpThreadId);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool GetExitCodeThread(IntPtr hThread, out uint lpExitCode);
-
         [DllImport("psapi.dll")]
         public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
-
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        public static extern IntPtr CreateFileMapping(IntPtr hFile, IntPtr lpFileMappingAttributes, FileMapProtection flProtect, uint dwMaximumSizeHigh, uint dwMaximumSizeLow, [MarshalAs(UnmanagedType.LPStr)] string lpName);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern IntPtr MapViewOfFile(IntPtr hFileMappingObject, FileMapAccess dwDesiredAccess, UInt32 dwFileOffsetHigh, UInt32 dwFileOffsetLow, UIntPtr dwNumberOfBytesToMap);
-
-        [DllImport("msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
-        public static extern IntPtr MemCopy(IntPtr dest, IntPtr src, uint count);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool UnmapViewOfFile(IntPtr lpBaseAddress);
 
         [DllImport("kernel32.dll")]
         public static extern bool GetBinaryType(string lpApplicationName, out BinaryType lpBinaryType);
 
         [DllImport("psapi.dll", SetLastError = true)]
         public static extern bool EnumProcessModulesEx(IntPtr hProcess, [Out] IntPtr lphModule, UInt32 cb, [MarshalAs(UnmanagedType.U4)] out UInt32 lpcbNeeded, DwFilterFlag dwff);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool GetExitCodeProcess(IntPtr hProcess, out uint ExitCode);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern UInt32 WaitForSingleObject(IntPtr hHandle, UInt32 dwMilliseconds);
 
         [Flags]
         public enum FileMapProtection : uint
@@ -124,15 +78,6 @@ namespace di2xinput
             LIST_MODULES_ALL = (LIST_MODULES_32BIT | LIST_MODULES_64BIT)   // list all the modules
         }
 
-        public const int PROCESS_CREATE_THREAD = 0x0002;
-        public const int PROCESS_QUERY_INFORMATION = 0x0400;
-        public const int PROCESS_VM_OPERATION = 0x0008;
-        public const int PROCESS_VM_WRITE = 0x0020;
-        public const int PROCESS_VM_READ = 0x0010;
-
-        public const uint MEM_COMMIT = 0x00001000;
-        public const uint MEM_RESERVE = 0x00002000;
-        public const uint PAGE_READWRITE = 4;
         public const uint MAPVK_VK_TO_VSC = 0x00;
         public const uint MAPVK_VSC_TO_VK = 0x01;
         public const uint MAPVK_VK_TO_CHAR = 0x02;
@@ -142,9 +87,9 @@ namespace di2xinput
 
         public static IntPtr LLAddress32 = IntPtr.Zero;
 
-        public static Dictionary<string, IntPtr> GetAllModuleNames(Process proc)
+        public static List<string> GetModuleNames(Process proc, bool x64 = false)
         {
-            Dictionary<string, IntPtr> moduleList = new Dictionary<string, IntPtr>();
+            List<string> moduleList = new List<string>();
 
             try
             {
@@ -154,19 +99,19 @@ namespace di2xinput
                 if (!proc.HasExited)
                     procHandle = proc.Handle;
 
-                EnumProcessModulesEx(procHandle, IntPtr.Zero, 4, out sizeNeeded, DwFilterFlag.LIST_MODULES_ALL);
+                EnumProcessModulesEx(procHandle, IntPtr.Zero, 4, out sizeNeeded, x64 ? DwFilterFlag.LIST_MODULES_64BIT : DwFilterFlag.LIST_MODULES_32BIT);
 
                 if (sizeNeeded == 0)
-                    return new Dictionary<string, IntPtr>();
+                    return new List<string>();
 
                 IntPtr[] modules = new IntPtr[sizeNeeded / Marshal.SizeOf(typeof(IntPtr))];
                 GCHandle gch = GCHandle.Alloc(modules, GCHandleType.Pinned);
                 IntPtr pModules = gch.AddrOfPinnedObject();
 
-                EnumProcessModulesEx(procHandle, pModules, sizeNeeded, out sizeNeeded, DwFilterFlag.LIST_MODULES_ALL);
+                EnumProcessModulesEx(procHandle, pModules, sizeNeeded, out sizeNeeded, x64 ? DwFilterFlag.LIST_MODULES_64BIT : DwFilterFlag.LIST_MODULES_32BIT);
 
                 if (sizeNeeded == 0)
-                    return new Dictionary<string, IntPtr>();
+                    return new List<string>();
 
                 StringBuilder sb = new StringBuilder(256);
 
@@ -175,8 +120,8 @@ namespace di2xinput
                     if (GetModuleFileNameEx(proc.Handle, modules[i], sb, 256) == 0)
                         continue;
 
-                    if (!moduleList.ContainsKey(sb.ToString()))
-                        moduleList.Add(sb.ToString(), modules[i]);
+                    if (!moduleList.Contains(sb.ToString()))
+                        moduleList.Add(sb.ToString());
                 }
             }
             catch { }
@@ -184,70 +129,5 @@ namespace di2xinput
             return moduleList;
         }
 
-        public static void GetLLAddress()
-        {
-            ProcessStartInfo startInfo = new ProcessStartInfo
-            {
-                WindowStyle = ProcessWindowStyle.Hidden,
-                FileName = "LLAddress.exe"
-            };
-
-            Process proc = Process.Start(startInfo);
-            proc.WaitForExit();
-            LLAddress32 = new IntPtr(proc.ExitCode);
-        }
-
-        public static int InjectDLL(Process proc)
-        {
-            IntPtr procHandle = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, false, proc.Id);
-
-            if (procHandle == IntPtr.Zero)
-                return 1;
-
-            BinaryType type;
-            GetBinaryType(proc.MainModule.FileName, out type);
-
-            IntPtr LoadLibraryAddress = IntPtr.Zero;
-
-            bool is64Bit = (type == BinaryType.SCS_64BIT_BINARY);
-
-            if (is64Bit)
-                LoadLibraryAddress = GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryW");
-            else
-                LoadLibraryAddress = LLAddress32;
-
-            if (LoadLibraryAddress == IntPtr.Zero)
-                return 2;
-
-            string DLLPath = Directory.GetCurrentDirectory() + "\\HookDLL" + (is64Bit ? "64" : "32") + ".dll\0";
-            int pathLength = Encoding.Unicode.GetByteCount(DLLPath);
-            byte[] pathBuffer = Encoding.Unicode.GetBytes(DLLPath);
-
-            IntPtr paramAddress = VirtualAllocEx(procHandle, IntPtr.Zero, (uint)pathLength, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-
-            if (paramAddress == IntPtr.Zero)
-                return 3;
-
-            UIntPtr bytesWritten = UIntPtr.Zero;
-            bool result = WriteProcessMemory(procHandle, paramAddress, pathBuffer, (uint)pathLength, out bytesWritten);
-
-            if (!result)
-                return 4;
-
-            IntPtr threadHandle = CreateRemoteThread(procHandle, IntPtr.Zero, 0, LoadLibraryAddress, paramAddress, 0, IntPtr.Zero);
-
-            if (threadHandle == IntPtr.Zero)
-                return 5;
-
-            WaitForSingleObject(threadHandle, 0xFFFFFFFF);
-
-            uint exitCode = 0;
-            GetExitCodeThread(threadHandle, out exitCode);
-
-            if(exitCode == 0)
-                return 6;
-
-            return 0;
-        }
     }
 }

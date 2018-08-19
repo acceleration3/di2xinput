@@ -1,0 +1,11 @@
+LIBRARY StubDLL
+EXPORTS
+	XInputEnable = Export_XInputEnable @5
+	XInputGetAudioDeviceIds = Export_XInputGetAudioDeviceIds @10
+	XInputGetDSoundAudioDeviceGuids = Export_XInputGetDSoundAudioDeviceGuids @6
+	XInputGetBatteryInformation = Export_XInputGetBatteryInformation @7
+	XInputGetCapabilities = Export_XInputGetCapabilities @4
+	XInputGetKeystroke = Export_XInputGetKeystroke @8
+	XInputGetState = Export_XInputGetState @2
+	XInputSetState = Export_XInputSetState @3
+	XInputGetStateEx = Export_XInputGetStateEx @100

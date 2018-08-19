@@ -24,7 +24,7 @@ namespace di2xinput
             gamepads.Clear();
 
             foreach(DeviceInstance dev in di.GetDevices(DeviceClass.GameControl, DeviceEnumerationFlags.AttachedOnly))
-                gamepads.Add(dev.InstanceGuid, new Joystick(di, dev.InstanceGuid));
+                gamepads.Add(dev.ProductGuid, new Joystick(di, dev.ProductGuid));
         }
 
         public static List<Joystick> GetGamepads()
@@ -68,8 +68,9 @@ namespace di2xinput
             else if((mapping & 2) == 2)
             {
                 int index = (mapping & 0x3C) >> 2;
-                int degrees = (mapping & 0xFFC0) >> 6;
-                return "POV " + index + " " + degrees + "°";
+                int dir = (mapping & 0xFFC0) >> 6;
+                string[] direction = new string[] { "Up", "Down", "Left", "Right" };
+                return "POV " + index + " " + direction[dir];
             }
             else if((mapping & 1) == 1)
             {
@@ -101,8 +102,30 @@ namespace di2xinput
             {
                 if (state.PointOfViewControllers[i] != -1)
                 {
-                    ushort degrees = (ushort)(state.PointOfViewControllers[i] / 100);
-                    mapping = (ushort)((mapping | 2) | (i << 2) | (degrees << 6));
+                    int angleDiv = ((state.PointOfViewControllers[i] / 100) / 45);
+                    byte direction = 0;
+
+                    switch(angleDiv)
+                    {
+                        case 7:
+                        case 0:
+                            direction = 0;
+                            break;
+                        case 1:
+                        case 2:
+                            direction = 3;
+                            break;
+                        case 3:
+                        case 4:
+                            direction = 1;
+                            break;
+                        case 5:
+                        case 6:
+                            direction = 2;
+                            break;
+                    }
+
+                    mapping = (ushort)((mapping | 2) | (i << 2) | (direction << 6));
                     return mapping;
                 }
             }

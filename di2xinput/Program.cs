@@ -12,44 +12,54 @@ namespace di2xinput
 {
     public static class Program
     {
-        public struct ProgramState
+        public class ProgramEntry
         {
-            public int mappingIndex;
-            public string selectedConfig;
+            public string path;
+            public string profile;
+            public string XIVersion;
         }
 
-        public struct Configuration
+        public class ProgramSettings
         {
-            public int searchMethod;
-            public string targetProcess;
+            public string currentProfile;
+            public List<ProgramEntry> entries = new List<ProgramEntry>();
+        }
+
+        public class Profile
+        {
+            public string name;
             public Mapping.MappingConfig[] mapping;
+
+            public Profile()
+            {
+                mapping = new Mapping.MappingConfig[]
+                {
+                    new Mapping.MappingConfig(),
+                    new Mapping.MappingConfig(),
+                    new Mapping.MappingConfig(),
+                    new Mapping.MappingConfig()
+                };
+            }
         }
 
-        public static ProgramState programState = new ProgramState
-        {
-            selectedConfig = "",
-            mappingIndex = 0
-        };
-        public static Configuration currentConfig = new Configuration
-        {
-            mapping = new Mapping.MappingConfig[4]
-            {
-                new Mapping.MappingConfig(),
-                new Mapping.MappingConfig(),
-                new Mapping.MappingConfig(),
-                new Mapping.MappingConfig()
-            },
-            searchMethod = 0,
-            targetProcess = ""
-        };
+        public static ProgramSettings programSettings = new ProgramSettings();
 
-        public const string configFolder = "./configs/";
-        
-        public static MemoryStream GetMappings()
-        {
-            MemoryStream ms = new MemoryStream(currentConfig.mapping[0].ToByteArray().Length * 4);
+        public static Dictionary<string, Profile> profiles = new Dictionary<string, Profile>();
 
-            foreach (Mapping.MappingConfig conf in currentConfig.mapping)
+        public static Profile activeProfile = new Profile();
+
+        public static string profileFolder = "./profiles/";
+
+        public static MemoryStream ProfileToBytes(string profileName)
+        {
+            if (!profiles.ContainsKey(profileName))
+                return null;
+
+            var profile = profiles[profileName];
+
+            MemoryStream ms = new MemoryStream(profile.mapping[0].ToByteArray().Length * 4);
+
+            foreach (Mapping.MappingConfig conf in profile.mapping)
             {
                 byte[] confBuffer = conf.ToByteArray();
                 ms.Write(confBuffer, 0, confBuffer.Length);
@@ -58,38 +68,74 @@ namespace di2xinput
             return ms;
         }
 
-        public static bool LoadConfig(string config)
+        public static Profile LoadProfile(string profile)
         {
-            if (File.Exists(configFolder + config + ".xml"))
+            if (File.Exists(profileFolder + profile + ".xml"))
             {              
                 try
                 {
-                    XmlSerializer configSerializer = new XmlSerializer(typeof(Configuration));
+                    XmlSerializer configSerializer = new XmlSerializer(typeof(Profile));
 
-                    Configuration newConfig;
+                    Profile newProfile;
 
-                    using (TextReader textReader = new StreamReader(configFolder + config + ".xml"))
-                        newConfig = (Configuration)configSerializer.Deserialize(textReader);
+                    using (TextReader textReader = new StreamReader(profileFolder + profile + ".xml"))
+                        newProfile = (Profile)configSerializer.Deserialize(textReader);
 
-                    foreach (Mapping.MappingConfig conf in newConfig.mapping)
-                    {
-                        if (conf.deviceGuid != Guid.Empty.ToString() && DIManager.GetJoystickFromID(conf.deviceGuid.ToString()) == null)
-                        {
-                            MessageBox.Show("This configuration is using a device that isn't plugged in. Please plug it in and reload the configuration.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return false;
-                        }
-                    }
-
-                    currentConfig = newConfig;
-
-                    return true;
+                    return newProfile;
                 }
                 catch { }
             }
 
-            return false;
+            return null;
         }
 
+        public static void RefreshProfiles()
+        {
+            if (!Directory.Exists(profileFolder))
+                Directory.CreateDirectory(profileFolder);
+
+            profiles.Clear();
+
+            foreach (string profile in Directory.EnumerateFiles(profileFolder, "*.xml"))
+            {
+                string profileName = profile.Substring(profile.LastIndexOf('/') + 1);
+                profileName = profileName.Substring(0, profileName.Length - 4);
+
+                Profile newProfile = LoadProfile(profileName);
+
+                if(newProfile != null)
+                {
+                    profiles.Add(profileName, LoadProfile(profileName));
+                }
+            }
+        }
+
+        public static void ApplyConfigToEntry(ProgramEntry entry)
+        {
+            string exeFolder = entry.path.Substring(0, entry.path.LastIndexOf("\\") + 1);
+
+            //Make profile config file
+            var configFile = exeFolder + "config.bin";
+
+            if (File.Exists(configFile))
+                File.Delete(configFile);
+
+            var ms = ProfileToBytes(entry.profile);
+            var fs = File.Create(configFile);
+            fs.Write(ms.GetBuffer(), 0, (int)ms.Length);
+            fs.Close();
+            fs.Dispose();
+
+            //Copy Stub DLL
+            string dllName = "xinput" + entry.XIVersion.Split(' ')[0] + ".dll";
+
+            if (File.Exists(exeFolder + dllName))
+                return;
+
+            string architecture = entry.XIVersion.Split(' ')[1];
+            string stubDLL = Directory.GetCurrentDirectory() + "\\DLLs\\StubDLL" + architecture + ".dll";
+            File.Copy(stubDLL, exeFolder + dllName);
+        }
 
         /// <summary>
         /// The main entry point for the application.
@@ -98,9 +144,6 @@ namespace di2xinput
         static void Main()
         {
             DIManager.Init();
-            WinAPI.GetLLAddress();
-            InjectMethod.StartSearching();
-
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainForm());

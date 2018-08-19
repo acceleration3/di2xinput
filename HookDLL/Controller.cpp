@@ -15,17 +15,17 @@ void Controller::SetDeviceGuid(std::string guid)
 
 void Controller::SetMappings(const std::vector<uint16_t>& mappings)
 {
+	
 }
 
 bool Controller::IsConnected()
 {
-	return true;
+	return type != DEVICE_TYPE::NONE;
 }
 
 XINPUT_GAMEPAD Controller::GetState()
 {
-	XINPUT_GAMEPAD state;
+	XINPUT_GAMEPAD state = { 0 };
 
-
-	return XINPUT_GAMEPAD();
+	return state;
 }

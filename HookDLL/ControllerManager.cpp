@@ -1,25 +1,50 @@
 #include "stdafx.h"
 #include "ControllerManager.h"
 
-std::random_device rd;
-std::mt19937 e2(rd());
-uint64_t packetNumber = 0;
+#include <fstream>
+#include "DirectInput.h"
 
 std::vector<std::unique_ptr<Controller>> ControllerManager::controllers;
-std::mutex ControllerManager::stateLock;
 
 void ControllerManager::Init()
 {
-	for (int i = 0; i < MAX_CONTROLLERS; i++)
-		controllers.push_back(std::make_unique<Controller>());
-}
+	if (!DirectInput::Init())
+	{
+		std::cout << "DirectInput failed to initialize." << std::endl;
+		return;
+	}
 
-void ControllerManager::SetMappingsFromBuffer(const std::vector<uint8_t>& buffer)
-{
-	std::cout << "ControllerManager -> Setting mappings from IPC buffer." << std::endl;
+	std::cout << "DirectInput initialized." << std::endl;
 
-	stateLock.lock();
-	
+	controllers.clear();
+
+	for (int i = 0; i < 4; i++)
+		controllers.emplace_back(std::make_unique<Controller>());
+
+	wchar_t executablePath[MAX_PATH];
+	GetModuleFileNameW(NULL, executablePath, MAX_PATH);
+
+	std::wstring configPath(executablePath);
+	configPath = configPath.substr(0, configPath.find_last_of(L'\\')) + L"\\config.bin";
+
+	std::ifstream configFile(configPath, std::ios::binary | std::ios::ate);
+	std::wcout << "Path: " << configPath << std::endl;
+
+	if (!configFile || !configFile.good())
+	{
+		std::cout << "Failed to read config file config.bin." << std::endl;
+		return;
+	}
+
+	std::ifstream::pos_type fileSize = configFile.tellg();
+
+	std::wcout << "config.bin is " << fileSize << " bytes long." << std::endl;
+
+	std::vector<char> buffer(fileSize);
+
+	configFile.seekg(0, std::ios::beg);
+	configFile.read(&buffer[0], fileSize);
+
 	Controller::DEVICE_TYPE type;
 	int guidLength = 0;
 	char* guid = nullptr;
@@ -32,7 +57,7 @@ void ControllerManager::SetMappingsFromBuffer(const std::vector<uint8_t>& buffer
 	{
 		type = static_cast<Controller::DEVICE_TYPE>(buffer[byteIndex]);
 		std::memcpy(&guidLength, &buffer[byteIndex + 1], sizeof(int));
-		
+
 		guid = new char[guidLength + 1];
 		std::memcpy(guid, &buffer[byteIndex + 5], guidLength);
 		guid[guidLength] = 0;
@@ -46,34 +71,23 @@ void ControllerManager::SetMappingsFromBuffer(const std::vector<uint8_t>& buffer
 		controllers[i]->SetDeviceType(type);
 		controllers[i]->SetMappings(mappings);
 	}
-
-	stateLock.unlock();
 }
 
 DWORD ControllerManager::GetState(DWORD controllerIndex, XINPUT_STATE* pState)
 {
-	std::cout << "ControllerManager -> GetState (index=" << controllerIndex << ")" << std::endl;
-
-	if(controllers[controllerIndex]->GetType() == Controller::DEVICE_TYPE::NONE)
+	if(!controllers[controllerIndex]->IsConnected())
 		return ERROR_DEVICE_NOT_CONNECTED;
-
-	stateLock.lock();
-
-	stateLock.unlock();
 
 	return ERROR_SUCCESS;
 }
 
 DWORD ControllerManager::GetCapabilities(DWORD controllerIndex, DWORD dwFlags, XINPUT_CAPABILITIES* pCapabilities)
 {
-	std::cout << "ControllerManager -> GetCapabilities (index=" << controllerIndex << ",flags=" << dwFlags << ")" << std::endl;
-
-	if (controllers[controllerIndex]->GetType() == Controller::DEVICE_TYPE::NONE)
+	if (!controllers[controllerIndex]->IsConnected())
 		return ERROR_DEVICE_NOT_CONNECTED;
 
-	stateLock.lock();
-
-	stateLock.unlock();
+	pCapabilities->Type = XINPUT_DEVTYPE_GAMEPAD;
+	pCapabilities->SubType = XINPUT_DEVSUBTYPE_GAMEPAD;
 
 	return ERROR_SUCCESS;
 }
