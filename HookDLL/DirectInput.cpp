@@ -7,7 +7,7 @@
 #include <iomanip>
 
 LPDIRECTINPUT8 DirectInput::directInput;
-std::vector<LPDIRECTINPUTDEVICE8> DirectInput::devices;
+std::map<std::string, LPDIRECTINPUTDEVICE8> DirectInput::devices;
 
 BOOL CALLBACK DirectInput::EnumJoysticksCallback(const DIDEVICEINSTANCE* instance, VOID* context)
 {
