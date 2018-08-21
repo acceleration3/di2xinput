@@ -67,9 +67,7 @@ void ControllerManager::Init()
 
 		byteIndex += sizeof(uint16_t) * 24;
 
-		controllers[i]->SetDeviceGuid(std::string(guid));
-		controllers[i]->SetDeviceType(type);
-		controllers[i]->SetMappings(mappings);
+		controllers[i]->AssignDIDevice(std::string(guid), type, mappings);
 	}
 }
 
@@ -77,6 +75,23 @@ DWORD ControllerManager::GetState(DWORD controllerIndex, XINPUT_STATE* pState)
 {
 	if(!controllers[controllerIndex]->IsConnected())
 		return ERROR_DEVICE_NOT_CONNECTED;
+
+	if (controllers[controllerIndex]->Acquire())
+	{
+		auto gamepadState = controllers[controllerIndex]->GetState();
+
+		std::memcpy(&pState->Gamepad, &gamepadState, sizeof(XINPUT_GAMEPAD));
+		pState->dwPacketNumber = GetTickCount();
+
+		if (!controllers[controllerIndex]->Unacquire())
+		{
+			std::cout << "Failed to unacquire." << std::endl;
+		}
+	}
+	else
+	{
+		std::cout << "Failed to acquire." << std::endl;
+	}
 
 	return ERROR_SUCCESS;
 }

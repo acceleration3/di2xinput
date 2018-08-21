@@ -102,28 +102,13 @@ namespace di2xinput
             {
                 if (state.PointOfViewControllers[i] != -1)
                 {
-                    int angleDiv = ((state.PointOfViewControllers[i] / 100) / 45);
-                    byte direction = 0;
+                    int angleDiv = ((state.PointOfViewControllers[i] + 2250) / 4500) % 8;
+                    int direction = 0;
 
-                    switch(angleDiv)
-                    {
-                        case 7:
-                        case 0:
-                            direction = 0;
-                            break;
-                        case 1:
-                        case 2:
-                            direction = 3;
-                            break;
-                        case 3:
-                        case 4:
-                            direction = 1;
-                            break;
-                        case 5:
-                        case 6:
-                            direction = 2;
-                            break;
-                    }
+                    if (angleDiv == 0 || angleDiv == 1 || angleDiv == 7) direction = 0;
+                    if (angleDiv == 1 || angleDiv == 2 || angleDiv == 3) direction = 3;
+                    if (angleDiv == 3 || angleDiv == 4 || angleDiv == 5) direction = 1;
+                    if (angleDiv == 5 || angleDiv == 6 || angleDiv == 7) direction = 2;
 
                     mapping = (ushort)((mapping | 2) | (i << 2) | (direction << 6));
                     return mapping;

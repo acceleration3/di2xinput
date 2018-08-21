@@ -34,7 +34,6 @@ DWORD WINAPI Export_XInputGetKeystroke(DWORD dwUserIndex, DWORD dwReserved, PXIN
 
 DWORD WINAPI Export_XInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState)
 {
-	std::cout << "XInputGetState." << std::endl;
 	return ControllerManager::GetState(dwUserIndex, pState);
 }
 
