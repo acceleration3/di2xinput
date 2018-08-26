@@ -34,8 +34,8 @@ public:
 	{
 		if (bKeyboard)
 		{
-			int vkCode = MapVirtualKey(index, MAPVK_VSC_TO_VK_EX);
-			std::cout << "Scancode: " << index << " -> VK: " << vkCode << std::endl;
+			index &= ~0x100;
+			int vkCode = MapVirtualKey(index, MAPVK_VSC_TO_VK);
 			state = GetAsyncKeyState(vkCode) != 0;
 		}
 		else
@@ -107,4 +107,43 @@ public:
 private:
 	int index;
 	bool state;
+};
+
+class DIAxisBinding : public DIBinding
+{
+public:
+
+	int index;
+
+	DIAxisBinding(int index, bool isNegative)
+		: DIBinding(DIBinding::BINDING_TYPE::AXIS_BINDING), index(index), isNegative(isNegative)
+	{
+	}
+
+	virtual void Update(const DIJOYSTATE2& joystate)
+	{
+		switch (index)
+		{
+			case 0: value = joystate.lX; break;
+			case 1: value = joystate.lY; break;
+			case 2: value = joystate.lZ; break;
+			case 3: value = joystate.lRx; break;
+			case 4: value = joystate.lRy; break;
+			case 5: value = joystate.lRz; break;
+		}
+	}
+
+	int GetValue()
+	{
+		return value;
+	}
+
+	bool IsNegative()
+	{
+		return isNegative;
+	}
+
+private:
+	int value;
+	bool isNegative;
 };

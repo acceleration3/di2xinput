@@ -15,8 +15,7 @@ namespace di2xinput
 {
     public partial class InputDialog : Form
     {
-        Guid deviceGuid;
-        Joystick acquiredJoystick;
+        DIManager.GamepadEntry gamepad;
 
         public ushort resultScancode;
         public ushort resultJoystickMapping;
@@ -49,15 +48,15 @@ namespace di2xinput
             }
         }
 
-        public InputDialog(string mapping, Guid deviceGuid)
+        public InputDialog(string mapping, DIManager.GamepadEntry gamepad)
         {
             InitializeComponent();
 
-            this.deviceGuid = deviceGuid;
+            this.gamepad = gamepad;
 
             label1.Text = "Press the button to map " + mapping.ToUpper() + "\nor\nClose this dialog to cancel the mapping";
 
-            if (deviceGuid == Guid.Empty)
+            if (gamepad == null)
             {
                 Application.AddMessageFilter(new KeyProcessor());
             }
@@ -65,17 +64,16 @@ namespace di2xinput
 
         private void InputDialog_Load(object sender, EventArgs e)
         {
-            if(this.deviceGuid != Guid.Empty)
+            if(gamepad != null)
             {
-                acquiredJoystick = DIManager.GetJoystickFromID(deviceGuid.ToString());
 
-                acquiredJoystick.Properties.DeadZone = 7500;
-                acquiredJoystick.Properties.AxisMode = DeviceAxisMode.Absolute;
-                acquiredJoystick.SetCooperativeLevel(this.Handle, (CooperativeLevel.NonExclusive | CooperativeLevel.Background));
-                acquiredJoystick.Acquire();
+                gamepad.joystick.Properties.DeadZone = 7500;
+                gamepad.joystick.Properties.AxisMode = DeviceAxisMode.Absolute;
+                gamepad.joystick.SetCooperativeLevel(this.Handle, (CooperativeLevel.NonExclusive | CooperativeLevel.Background));
+                gamepad.joystick.Acquire();
 
-                foreach (DeviceObjectInstance doi in acquiredJoystick.GetObjects(DeviceObjectTypeFlags.Axis))
-                    acquiredJoystick.GetObjectPropertiesById(doi.ObjectId).Range = new InputRange(-5000, 5000);
+                foreach (DeviceObjectInstance doi in gamepad.joystick.GetObjects(DeviceObjectTypeFlags.Axis))
+                    gamepad.joystick.GetObjectPropertiesById(doi.ObjectId).Range = new InputRange(-5000, 5000);
 
                 inputTimer.Enabled = true;
                 inputTimer.Start();
@@ -84,8 +82,8 @@ namespace di2xinput
 
         private void inputTimer_Tick(object sender, EventArgs e)
         {
-            var joyState = acquiredJoystick.GetCurrentState();
-            var joyMapping = DIManager.GetMappingFromState(acquiredJoystick, joyState);
+            var joyState = gamepad.joystick.GetCurrentState();
+            var joyMapping = DIManager.GetMappingFromState(gamepad.joystick, joyState);
 
             if(joyMapping != 0)
             {
@@ -97,9 +95,9 @@ namespace di2xinput
 
         private void InputDialog_FormClosed(object sender, FormClosedEventArgs e)
         {
-            if (this.deviceGuid != Guid.Empty)
+            if (gamepad != null)
             {
-                acquiredJoystick.Unacquire();
+                gamepad.joystick.Unacquire();
                 inputTimer.Enabled = false;
                 inputTimer.Stop();
             }

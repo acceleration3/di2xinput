@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace di2xinput
 {
@@ -16,17 +18,24 @@ namespace di2xinput
             Controller
         }
 
-        public class MappingConfig
+        [Serializable]
+        public class ControllerConfig
         {
+            [XmlElement("Type")]
             public MappedDeviceType deviceType;
-            public string deviceGuid;
+            [XmlElement("InstanceGUID")]
+            public string instanceGUID;
+            [XmlElement("ProductGUID")]
+            public string productGUID;
+            [XmlElement("ButtonMapping")]
             public ushort[] mapping;
             
-            public MappingConfig()
+            public ControllerConfig()
             {
                 mapping = new ushort[24];
                 deviceType = MappedDeviceType.None;
-                deviceGuid = Guid.Empty.ToString();
+                instanceGUID = Guid.Empty.ToString();
+                productGUID = Guid.Empty.ToString();
             }
 
             public byte[] ToByteArray()
@@ -34,8 +43,10 @@ namespace di2xinput
                 List<byte> byteArray = new List<byte>();
 
                 byteArray.Add((byte)deviceType);
-                byteArray.AddRange(BitConverter.GetBytes(deviceGuid.Length));
-                byteArray.AddRange(Encoding.ASCII.GetBytes(deviceGuid));
+                byteArray.AddRange(BitConverter.GetBytes(instanceGUID.Length));
+                byteArray.AddRange(Encoding.ASCII.GetBytes(instanceGUID));
+                byteArray.AddRange(BitConverter.GetBytes(productGUID.Length));
+                byteArray.AddRange(Encoding.ASCII.GetBytes(productGUID));
 
                 for (int i = 0; i < mapping.Length; i++)
                     byteArray.AddRange(BitConverter.GetBytes(mapping[i]));
@@ -55,12 +66,8 @@ namespace di2xinput
         public static string GetNameFromScancode(ushort scancode)
         {
             StringBuilder keyName = new StringBuilder(256);
-
             WinAPI.GetKeyNameText((uint)(scancode << 16), keyName, 256);
-
             return keyName.ToString();
         }
-
-
     }
 }

@@ -26,7 +26,7 @@ namespace di2xinput
             "Y",
             "Left Trigger",
             "Right Trigger",
-            "Left Stick Up",
+            "Left Stick Up", // 16
             "Left Stick Down",
             "Left Stick Left",
             "Left Stick Right",

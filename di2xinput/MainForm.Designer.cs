@@ -28,17 +28,18 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.ProgramTab = new System.Windows.Forms.TabPage();
             this.RemoveButton = new System.Windows.Forms.Button();
             this.AddButton = new System.Windows.Forms.Button();
             this.ProgramGrid = new System.Windows.Forms.DataGridView();
+            this.IconColumn = new System.Windows.Forms.DataGridViewImageColumn();
+            this.PathColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.VersionColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.ProfileColumn = new System.Windows.Forms.DataGridViewComboBoxColumn();
             this.ProfileTab = new System.Windows.Forms.TabPage();
-            this.button1 = new System.Windows.Forms.Button();
-            this.ProfileCombo = new System.Windows.Forms.ComboBox();
-            this.label2 = new System.Windows.Forms.Label();
-            this.MainTabs = new System.Windows.Forms.TabControl();
+            this.ControllerTabs = new System.Windows.Forms.TabControl();
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.DeviceCombo = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
@@ -49,17 +50,16 @@
             this.tabPage4 = new System.Windows.Forms.TabPage();
             this.tabPage5 = new System.Windows.Forms.TabPage();
             this.tabPage6 = new System.Windows.Forms.TabPage();
+            this.button1 = new System.Windows.Forms.Button();
+            this.ProfileCombo = new System.Windows.Forms.ComboBox();
+            this.label2 = new System.Windows.Forms.Label();
             this.SettingsTab = new System.Windows.Forms.TabPage();
             this.openProgramDialog = new System.Windows.Forms.OpenFileDialog();
-            this.IconColumn = new System.Windows.Forms.DataGridViewImageColumn();
-            this.PathColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.VersionColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.ProfileColumn = new System.Windows.Forms.DataGridViewComboBoxColumn();
             this.tabControl1.SuspendLayout();
             this.ProgramTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.ProgramGrid)).BeginInit();
             this.ProfileTab.SuspendLayout();
-            this.MainTabs.SuspendLayout();
+            this.ControllerTabs.SuspendLayout();
             this.tabPage3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.ControllerPicture)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.MappingGrid)).BeginInit();
@@ -131,21 +131,66 @@
             this.ProfileColumn});
             this.ProgramGrid.EditMode = System.Windows.Forms.DataGridViewEditMode.EditOnEnter;
             this.ProgramGrid.Location = new System.Drawing.Point(4, 3);
+            this.ProgramGrid.MultiSelect = false;
             this.ProgramGrid.Name = "ProgramGrid";
             this.ProgramGrid.RowHeadersVisible = false;
+            this.ProgramGrid.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.ProgramGrid.ShowCellErrors = false;
             this.ProgramGrid.ShowCellToolTips = false;
             this.ProgramGrid.ShowEditingIcon = false;
             this.ProgramGrid.ShowRowErrors = false;
             this.ProgramGrid.Size = new System.Drawing.Size(552, 280);
             this.ProgramGrid.TabIndex = 0;
+            this.ProgramGrid.EditingControlShowing += new System.Windows.Forms.DataGridViewEditingControlShowingEventHandler(this.ProgramGrid_EditingControlShowing);
+            // 
+            // IconColumn
+            // 
+            this.IconColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.ColumnHeader;
+            this.IconColumn.FillWeight = 20F;
+            this.IconColumn.HeaderText = "Icon";
+            this.IconColumn.Name = "IconColumn";
+            this.IconColumn.ReadOnly = true;
+            this.IconColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.IconColumn.Width = 32;
+            // 
+            // PathColumn
+            // 
+            this.PathColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
+            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.PathColumn.DefaultCellStyle = dataGridViewCellStyle2;
+            this.PathColumn.FillWeight = 80F;
+            this.PathColumn.HeaderText = "Path";
+            this.PathColumn.Name = "PathColumn";
+            this.PathColumn.ReadOnly = true;
+            this.PathColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.PathColumn.Width = 277;
+            // 
+            // VersionColumn
+            // 
+            this.VersionColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
+            this.VersionColumn.HeaderText = "XI Version";
+            this.VersionColumn.Name = "VersionColumn";
+            this.VersionColumn.ReadOnly = true;
+            this.VersionColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.VersionColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            this.VersionColumn.Width = 90;
+            // 
+            // ProfileColumn
+            // 
+            this.ProfileColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
+            this.ProfileColumn.DisplayStyle = System.Windows.Forms.DataGridViewComboBoxDisplayStyle.ComboBox;
+            this.ProfileColumn.FillWeight = 20F;
+            this.ProfileColumn.HeaderText = "Profile";
+            this.ProfileColumn.Name = "ProfileColumn";
+            this.ProfileColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.ProfileColumn.Width = 150;
             // 
             // ProfileTab
             // 
+            this.ProfileTab.Controls.Add(this.ControllerTabs);
             this.ProfileTab.Controls.Add(this.button1);
             this.ProfileTab.Controls.Add(this.ProfileCombo);
             this.ProfileTab.Controls.Add(this.label2);
-            this.ProfileTab.Controls.Add(this.MainTabs);
             this.ProfileTab.Location = new System.Drawing.Point(4, 22);
             this.ProfileTab.Name = "ProfileTab";
             this.ProfileTab.Padding = new System.Windows.Forms.Padding(3);
@@ -153,6 +198,144 @@
             this.ProfileTab.TabIndex = 1;
             this.ProfileTab.Text = "Edit Profile";
             this.ProfileTab.UseVisualStyleBackColor = true;
+            // 
+            // ControllerTabs
+            // 
+            this.ControllerTabs.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.ControllerTabs.Controls.Add(this.tabPage3);
+            this.ControllerTabs.Controls.Add(this.tabPage4);
+            this.ControllerTabs.Controls.Add(this.tabPage5);
+            this.ControllerTabs.Controls.Add(this.tabPage6);
+            this.ControllerTabs.Location = new System.Drawing.Point(7, 37);
+            this.ControllerTabs.Name = "ControllerTabs";
+            this.ControllerTabs.SelectedIndex = 0;
+            this.ControllerTabs.Size = new System.Drawing.Size(548, 277);
+            this.ControllerTabs.TabIndex = 9;
+            this.ControllerTabs.SelectedIndexChanged += new System.EventHandler(this.ControllerTabs_SelectedIndexChanged);
+            // 
+            // tabPage3
+            // 
+            this.tabPage3.Controls.Add(this.DeviceCombo);
+            this.tabPage3.Controls.Add(this.label1);
+            this.tabPage3.Controls.Add(this.ControllerPicture);
+            this.tabPage3.Controls.Add(this.MappingGrid);
+            this.tabPage3.Location = new System.Drawing.Point(4, 22);
+            this.tabPage3.Name = "tabPage3";
+            this.tabPage3.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage3.Size = new System.Drawing.Size(540, 251);
+            this.tabPage3.TabIndex = 0;
+            this.tabPage3.Text = "Controller 1";
+            this.tabPage3.UseVisualStyleBackColor = true;
+            // 
+            // DeviceCombo
+            // 
+            this.DeviceCombo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.DeviceCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.DeviceCombo.FormattingEnabled = true;
+            this.DeviceCombo.Items.AddRange(new object[] {
+            "None",
+            "Keyboard"});
+            this.DeviceCombo.Location = new System.Drawing.Point(99, 8);
+            this.DeviceCombo.Name = "DeviceCombo";
+            this.DeviceCombo.Size = new System.Drawing.Size(433, 21);
+            this.DeviceCombo.TabIndex = 13;
+            this.DeviceCombo.DropDown += new System.EventHandler(this.DeviceCombo_DropDown);
+            this.DeviceCombo.SelectedIndexChanged += new System.EventHandler(this.DeviceCombo_SelectedIndexChanged);
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(9, 11);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(84, 13);
+            this.label1.TabIndex = 12;
+            this.label1.Text = "Mapped device:";
+            // 
+            // ControllerPicture
+            // 
+            this.ControllerPicture.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.ControllerPicture.Image = global::di2xinput.Properties.Resources.Xbox_Controller;
+            this.ControllerPicture.Location = new System.Drawing.Point(9, 35);
+            this.ControllerPicture.Name = "ControllerPicture";
+            this.ControllerPicture.Size = new System.Drawing.Size(275, 208);
+            this.ControllerPicture.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.ControllerPicture.TabIndex = 11;
+            this.ControllerPicture.TabStop = false;
+            // 
+            // MappingGrid
+            // 
+            this.MappingGrid.AllowUserToAddRows = false;
+            this.MappingGrid.AllowUserToDeleteRows = false;
+            this.MappingGrid.AllowUserToResizeColumns = false;
+            this.MappingGrid.AllowUserToResizeRows = false;
+            this.MappingGrid.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.MappingGrid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.MappingGrid.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.Column1,
+            this.Column2});
+            this.MappingGrid.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
+            this.MappingGrid.Location = new System.Drawing.Point(292, 35);
+            this.MappingGrid.MultiSelect = false;
+            this.MappingGrid.Name = "MappingGrid";
+            this.MappingGrid.ReadOnly = true;
+            this.MappingGrid.RowHeadersVisible = false;
+            this.MappingGrid.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.DisableResizing;
+            this.MappingGrid.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.MappingGrid.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.CellSelect;
+            this.MappingGrid.ShowCellErrors = false;
+            this.MappingGrid.ShowCellToolTips = false;
+            this.MappingGrid.ShowEditingIcon = false;
+            this.MappingGrid.ShowRowErrors = false;
+            this.MappingGrid.Size = new System.Drawing.Size(240, 208);
+            this.MappingGrid.TabIndex = 10;
+            this.MappingGrid.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.MappingGrid_CellClick);
+            // 
+            // Column1
+            // 
+            this.Column1.HeaderText = "Binding";
+            this.Column1.Name = "Column1";
+            this.Column1.ReadOnly = true;
+            // 
+            // Column2
+            // 
+            this.Column2.HeaderText = "Mapping";
+            this.Column2.Name = "Column2";
+            this.Column2.ReadOnly = true;
+            this.Column2.Width = 120;
+            // 
+            // tabPage4
+            // 
+            this.tabPage4.Location = new System.Drawing.Point(4, 22);
+            this.tabPage4.Name = "tabPage4";
+            this.tabPage4.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage4.Size = new System.Drawing.Size(540, 251);
+            this.tabPage4.TabIndex = 1;
+            this.tabPage4.Text = "Controller 2";
+            this.tabPage4.UseVisualStyleBackColor = true;
+            // 
+            // tabPage5
+            // 
+            this.tabPage5.Location = new System.Drawing.Point(4, 22);
+            this.tabPage5.Name = "tabPage5";
+            this.tabPage5.Size = new System.Drawing.Size(540, 251);
+            this.tabPage5.TabIndex = 2;
+            this.tabPage5.Text = "Controller 3";
+            this.tabPage5.UseVisualStyleBackColor = true;
+            // 
+            // tabPage6
+            // 
+            this.tabPage6.Location = new System.Drawing.Point(4, 22);
+            this.tabPage6.Name = "tabPage6";
+            this.tabPage6.Size = new System.Drawing.Size(540, 251);
+            this.tabPage6.TabIndex = 3;
+            this.tabPage6.Text = "Controller 4";
+            this.tabPage6.UseVisualStyleBackColor = true;
             // 
             // button1
             // 
@@ -186,144 +369,6 @@
             this.label2.TabIndex = 10;
             this.label2.Text = "Profile Name:";
             // 
-            // MainTabs
-            // 
-            this.MainTabs.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.MainTabs.Controls.Add(this.tabPage3);
-            this.MainTabs.Controls.Add(this.tabPage4);
-            this.MainTabs.Controls.Add(this.tabPage5);
-            this.MainTabs.Controls.Add(this.tabPage6);
-            this.MainTabs.Location = new System.Drawing.Point(8, 38);
-            this.MainTabs.Name = "MainTabs";
-            this.MainTabs.SelectedIndex = 0;
-            this.MainTabs.Size = new System.Drawing.Size(545, 274);
-            this.MainTabs.TabIndex = 9;
-            this.MainTabs.SelectedIndexChanged += new System.EventHandler(this.MainTabs_SelectedIndexChanged);
-            // 
-            // tabPage3
-            // 
-            this.tabPage3.Controls.Add(this.DeviceCombo);
-            this.tabPage3.Controls.Add(this.label1);
-            this.tabPage3.Controls.Add(this.ControllerPicture);
-            this.tabPage3.Controls.Add(this.MappingGrid);
-            this.tabPage3.Location = new System.Drawing.Point(4, 22);
-            this.tabPage3.Name = "tabPage3";
-            this.tabPage3.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage3.Size = new System.Drawing.Size(537, 248);
-            this.tabPage3.TabIndex = 0;
-            this.tabPage3.Text = "Controller 1";
-            this.tabPage3.UseVisualStyleBackColor = true;
-            // 
-            // DeviceCombo
-            // 
-            this.DeviceCombo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.DeviceCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.DeviceCombo.FormattingEnabled = true;
-            this.DeviceCombo.Items.AddRange(new object[] {
-            "None",
-            "Keyboard"});
-            this.DeviceCombo.Location = new System.Drawing.Point(96, 6);
-            this.DeviceCombo.Name = "DeviceCombo";
-            this.DeviceCombo.Size = new System.Drawing.Size(433, 21);
-            this.DeviceCombo.TabIndex = 5;
-            this.DeviceCombo.DropDown += new System.EventHandler(this.DeviceCombo_DropDown);
-            this.DeviceCombo.SelectedIndexChanged += new System.EventHandler(this.DeviceCombo_SelectedIndexChanged);
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(6, 9);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(84, 13);
-            this.label1.TabIndex = 4;
-            this.label1.Text = "Mapped device:";
-            // 
-            // ControllerPicture
-            // 
-            this.ControllerPicture.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.ControllerPicture.Image = global::di2xinput.Properties.Resources.Xbox_Controller;
-            this.ControllerPicture.Location = new System.Drawing.Point(6, 33);
-            this.ControllerPicture.Name = "ControllerPicture";
-            this.ControllerPicture.Size = new System.Drawing.Size(275, 208);
-            this.ControllerPicture.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.ControllerPicture.TabIndex = 3;
-            this.ControllerPicture.TabStop = false;
-            // 
-            // MappingGrid
-            // 
-            this.MappingGrid.AllowUserToAddRows = false;
-            this.MappingGrid.AllowUserToDeleteRows = false;
-            this.MappingGrid.AllowUserToResizeColumns = false;
-            this.MappingGrid.AllowUserToResizeRows = false;
-            this.MappingGrid.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.MappingGrid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.MappingGrid.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.Column1,
-            this.Column2});
-            this.MappingGrid.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
-            this.MappingGrid.Location = new System.Drawing.Point(289, 33);
-            this.MappingGrid.MultiSelect = false;
-            this.MappingGrid.Name = "MappingGrid";
-            this.MappingGrid.ReadOnly = true;
-            this.MappingGrid.RowHeadersVisible = false;
-            this.MappingGrid.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.DisableResizing;
-            this.MappingGrid.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.MappingGrid.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.CellSelect;
-            this.MappingGrid.ShowCellErrors = false;
-            this.MappingGrid.ShowCellToolTips = false;
-            this.MappingGrid.ShowEditingIcon = false;
-            this.MappingGrid.ShowRowErrors = false;
-            this.MappingGrid.Size = new System.Drawing.Size(240, 208);
-            this.MappingGrid.TabIndex = 0;
-            this.MappingGrid.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.MappingGrid_CellClick);
-            // 
-            // Column1
-            // 
-            this.Column1.HeaderText = "Binding";
-            this.Column1.Name = "Column1";
-            this.Column1.ReadOnly = true;
-            // 
-            // Column2
-            // 
-            this.Column2.HeaderText = "Mapping";
-            this.Column2.Name = "Column2";
-            this.Column2.ReadOnly = true;
-            this.Column2.Width = 120;
-            // 
-            // tabPage4
-            // 
-            this.tabPage4.Location = new System.Drawing.Point(4, 22);
-            this.tabPage4.Name = "tabPage4";
-            this.tabPage4.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage4.Size = new System.Drawing.Size(537, 248);
-            this.tabPage4.TabIndex = 1;
-            this.tabPage4.Text = "Controller 2";
-            this.tabPage4.UseVisualStyleBackColor = true;
-            // 
-            // tabPage5
-            // 
-            this.tabPage5.Location = new System.Drawing.Point(4, 22);
-            this.tabPage5.Name = "tabPage5";
-            this.tabPage5.Size = new System.Drawing.Size(537, 248);
-            this.tabPage5.TabIndex = 2;
-            this.tabPage5.Text = "Controller 3";
-            this.tabPage5.UseVisualStyleBackColor = true;
-            // 
-            // tabPage6
-            // 
-            this.tabPage6.Location = new System.Drawing.Point(4, 22);
-            this.tabPage6.Name = "tabPage6";
-            this.tabPage6.Size = new System.Drawing.Size(537, 248);
-            this.tabPage6.TabIndex = 3;
-            this.tabPage6.Text = "Controller 4";
-            this.tabPage6.UseVisualStyleBackColor = true;
-            // 
             // SettingsTab
             // 
             this.SettingsTab.Location = new System.Drawing.Point(4, 22);
@@ -337,48 +382,6 @@
             // openProgramDialog
             // 
             this.openProgramDialog.Filter = "Executable File | *.exe";
-            // 
-            // IconColumn
-            // 
-            this.IconColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.ColumnHeader;
-            this.IconColumn.FillWeight = 20F;
-            this.IconColumn.HeaderText = "Icon";
-            this.IconColumn.Name = "IconColumn";
-            this.IconColumn.ReadOnly = true;
-            this.IconColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
-            this.IconColumn.Width = 32;
-            // 
-            // PathColumn
-            // 
-            this.PathColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.PathColumn.DefaultCellStyle = dataGridViewCellStyle1;
-            this.PathColumn.FillWeight = 80F;
-            this.PathColumn.HeaderText = "Path";
-            this.PathColumn.Name = "PathColumn";
-            this.PathColumn.ReadOnly = true;
-            this.PathColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            this.PathColumn.Width = 277;
-            // 
-            // VersionColumn
-            // 
-            this.VersionColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
-            this.VersionColumn.HeaderText = "XI Version";
-            this.VersionColumn.Name = "VersionColumn";
-            this.VersionColumn.ReadOnly = true;
-            this.VersionColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
-            this.VersionColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            this.VersionColumn.Width = 90;
-            // 
-            // ProfileColumn
-            // 
-            this.ProfileColumn.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.None;
-            this.ProfileColumn.DisplayStyle = System.Windows.Forms.DataGridViewComboBoxDisplayStyle.ComboBox;
-            this.ProfileColumn.FillWeight = 20F;
-            this.ProfileColumn.HeaderText = "Profile";
-            this.ProfileColumn.Name = "ProfileColumn";
-            this.ProfileColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
-            this.ProfileColumn.Width = 150;
             // 
             // MainForm
             // 
@@ -395,7 +398,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.ProgramGrid)).EndInit();
             this.ProfileTab.ResumeLayout(false);
             this.ProfileTab.PerformLayout();
-            this.MainTabs.ResumeLayout(false);
+            this.ControllerTabs.ResumeLayout(false);
             this.tabPage3.ResumeLayout(false);
             this.tabPage3.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.ControllerPicture)).EndInit();
@@ -412,14 +415,8 @@
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.ComboBox ProfileCombo;
         private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.TabControl MainTabs;
+        private System.Windows.Forms.TabControl ControllerTabs;
         private System.Windows.Forms.TabPage tabPage3;
-        private System.Windows.Forms.ComboBox DeviceCombo;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.PictureBox ControllerPicture;
-        private System.Windows.Forms.DataGridView MappingGrid;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column1;
-        private System.Windows.Forms.DataGridViewTextBoxColumn Column2;
         private System.Windows.Forms.TabPage tabPage4;
         private System.Windows.Forms.TabPage tabPage5;
         private System.Windows.Forms.TabPage tabPage6;
@@ -432,5 +429,11 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn PathColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn VersionColumn;
         private System.Windows.Forms.DataGridViewComboBoxColumn ProfileColumn;
+        private System.Windows.Forms.ComboBox DeviceCombo;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.PictureBox ControllerPicture;
+        private System.Windows.Forms.DataGridView MappingGrid;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Column1;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Column2;
     }
 }

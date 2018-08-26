@@ -23,6 +23,13 @@ DWORD WINAPI Export_XInputGetDSoundAudioDeviceGuids(DWORD dwUserIndex, GUID* pDS
 DWORD WINAPI Export_XInputGetBatteryInformation(DWORD dwUserIndex, BYTE devType, XINPUT_BATTERY_INFORMATION* pBatteryInformation)
 {
 	std::cout << "XInputGetBatteryInformation." << std::endl;
+
+	if (devType == BATTERY_DEVTYPE_GAMEPAD && !ControllerManager::IsConnected(dwUserIndex))
+		return ERROR_DEVICE_NOT_CONNECTED;
+	
+	pBatteryInformation->BatteryLevel = BATTERY_LEVEL_FULL;
+	pBatteryInformation->BatteryType = BATTERY_TYPE_WIRED;
+
 	return 0;
 }
 
@@ -34,6 +41,9 @@ DWORD WINAPI Export_XInputGetKeystroke(DWORD dwUserIndex, DWORD dwReserved, PXIN
 
 DWORD WINAPI Export_XInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState)
 {
+	if (!ControllerManager::IsConnected(dwUserIndex))
+		return ERROR_DEVICE_NOT_CONNECTED;
+
 	return ControllerManager::GetState(dwUserIndex, pState);
 }
 
@@ -45,12 +55,16 @@ DWORD WINAPI Export_XInputGetStateEx(DWORD dwUserIndex, XINPUT_STATE* pState)
 
 DWORD WINAPI Export_XInputSetState(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration)
 {
-	std::cout << "XInputSetState." << std::endl;
-	return 0;
+	if (!ControllerManager::IsConnected(dwUserIndex))
+		return ERROR_DEVICE_NOT_CONNECTED;
+
+	return ERROR_SUCCESS;
 }
 
 DWORD WINAPI Export_XInputGetCapabilities(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES* pCapabilities)
 {
-	std::cout << "XInputGetCapabilities." << std::endl;
+	if (!ControllerManager::IsConnected(dwUserIndex))
+		return ERROR_DEVICE_NOT_CONNECTED;
+
 	return ControllerManager::GetCapabilities(dwUserIndex, dwFlags, pCapabilities);
 }

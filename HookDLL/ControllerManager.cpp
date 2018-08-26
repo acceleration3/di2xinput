@@ -25,20 +25,20 @@ void ControllerManager::Init()
 	GetModuleFileNameW(NULL, executablePath, MAX_PATH);
 
 	std::wstring configPath(executablePath);
-	configPath = configPath.substr(0, configPath.find_last_of(L'\\')) + L"\\config.bin";
+	configPath = configPath.substr(0, configPath.find_last_of(L'\\')) + L"\\di2xiprofile.bin";
 
 	std::ifstream configFile(configPath, std::ios::binary | std::ios::ate);
 	std::wcout << "Path: " << configPath << std::endl;
 
 	if (!configFile || !configFile.good())
 	{
-		std::cout << "Failed to read config file config.bin." << std::endl;
+		std::cout << "Failed to read config file di2xiprofile.bin." << std::endl;
 		return;
 	}
 
 	std::ifstream::pos_type fileSize = configFile.tellg();
 
-	std::wcout << "config.bin is " << fileSize << " bytes long." << std::endl;
+	std::wcout << "di2xiprofile.bin is " << fileSize << " bytes long." << std::endl;
 
 	std::vector<char> buffer(fileSize);
 
@@ -46,8 +46,10 @@ void ControllerManager::Init()
 	configFile.read(&buffer[0], fileSize);
 
 	Controller::DEVICE_TYPE type;
-	int guidLength = 0;
-	char* guid = nullptr;
+	int guidLength1 = 0;
+	int guidLength2 = 0;
+	char* instanceGUID = nullptr;
+	char* productGUID = nullptr;
 	std::vector<uint16_t> mappings;
 	int byteIndex = 0;
 
@@ -56,53 +58,83 @@ void ControllerManager::Init()
 	for (int i = 0; i < MAX_CONTROLLERS; i++)
 	{
 		type = static_cast<Controller::DEVICE_TYPE>(buffer[byteIndex]);
-		std::memcpy(&guidLength, &buffer[byteIndex + 1], sizeof(int));
+		std::memcpy(&guidLength1, &buffer[byteIndex + 1], sizeof(int));
+		byteIndex += 5;
 
-		guid = new char[guidLength + 1];
-		std::memcpy(guid, &buffer[byteIndex + 5], guidLength);
-		guid[guidLength] = 0;
+		instanceGUID = new char[guidLength1 + 1];
+		std::memcpy(instanceGUID, &buffer[byteIndex], guidLength1);
+		instanceGUID[guidLength1] = 0;
+		byteIndex += guidLength1;
 
-		byteIndex += 5 + guidLength;
+		std::memcpy(&guidLength2, &buffer[byteIndex], sizeof(int));
+		byteIndex += 4;
+
+		productGUID = new char[guidLength2 + 1];
+		std::memcpy(productGUID, &buffer[byteIndex], guidLength2);
+		productGUID[guidLength2] = 0;
+		byteIndex += guidLength2;
+
 		std::memcpy(&mappings[0], &buffer[byteIndex], sizeof(uint16_t) * 24);
-
 		byteIndex += sizeof(uint16_t) * 24;
 
-		controllers[i]->AssignDIDevice(std::string(guid), type, mappings);
+		controllers[i]->AssignDIDevice(instanceGUID, productGUID, type, mappings);
 	}
+}
+
+bool ControllerManager::IsConnected(DWORD controllerIndex)
+{
+	return controllers[controllerIndex]->IsConnected();
 }
 
 DWORD ControllerManager::GetState(DWORD controllerIndex, XINPUT_STATE* pState)
 {
-	if(!controllers[controllerIndex]->IsConnected())
-		return ERROR_DEVICE_NOT_CONNECTED;
-
-	if (controllers[controllerIndex]->Acquire())
+	if (PollGamepad(controllerIndex, &pState->Gamepad))
 	{
-		auto gamepadState = controllers[controllerIndex]->GetState();
-
-		std::memcpy(&pState->Gamepad, &gamepadState, sizeof(XINPUT_GAMEPAD));
 		pState->dwPacketNumber = GetTickCount();
-
-		if (!controllers[controllerIndex]->Unacquire())
-		{
-			std::cout << "Failed to unacquire." << std::endl;
-		}
+		return ERROR_SUCCESS;
 	}
 	else
 	{
-		std::cout << "Failed to acquire." << std::endl;
+		std::cout << "Failed to poll for gamepad state." << std::endl;
+		return ERROR_DEVICE_UNREACHABLE;
 	}
-
-	return ERROR_SUCCESS;
 }
 
 DWORD ControllerManager::GetCapabilities(DWORD controllerIndex, DWORD dwFlags, XINPUT_CAPABILITIES* pCapabilities)
 {
-	if (!controllers[controllerIndex]->IsConnected())
-		return ERROR_DEVICE_NOT_CONNECTED;
+	if (PollGamepad(controllerIndex, &pCapabilities->Gamepad))
+	{
+		pCapabilities->Type = XINPUT_DEVTYPE_GAMEPAD;
+		pCapabilities->SubType = XINPUT_DEVSUBTYPE_GAMEPAD;
+		return ERROR_SUCCESS;
+	}
+	else
+	{
+		std::cout << "Failed to poll for gamepad capabilities." << std::endl;
+		return ERROR_DEVICE_UNREACHABLE;
+	}
+}
 
-	pCapabilities->Type = XINPUT_DEVTYPE_GAMEPAD;
-	pCapabilities->SubType = XINPUT_DEVSUBTYPE_GAMEPAD;
+bool ControllerManager::PollGamepad(int index, XINPUT_GAMEPAD* gamepad)
+{
+	auto res = controllers[index]->Acquire();
 
-	return ERROR_SUCCESS;
+	if (SUCCEEDED(res))
+	{
+		auto gamepadState = controllers[index]->GetState();
+		std::memcpy(gamepad, &gamepadState, sizeof(XINPUT_GAMEPAD));
+		res = controllers[index]->Unacquire();
+
+		if (FAILED(res))
+		{
+			std::cout << "Failed to unacquire. HRESULT=0x" << std::hex << res << std::endl;
+		}
+
+		return true;
+	}
+	else
+	{
+		std::cout << "Failed to acquire. HRESULT=0x" << std::hex << res << std::endl;
+		return false;
+	}
 }

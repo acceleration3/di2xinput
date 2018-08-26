@@ -7,35 +7,53 @@
 #include <iomanip>
 
 LPDIRECTINPUT8 DirectInput::directInput;
-std::map<std::string, LPDIRECTINPUTDEVICE8> DirectInput::devices;
+std::vector<std::tuple<std::string, std::string, LPDIRECTINPUTDEVICE8>> DirectInput::devices;
 HWND DirectInput::dummyWindow;
+LPDIRECTINPUTDEVICE8 DirectInput::currentDevice;
+
+BOOL CALLBACK DirectInput::EnumObjectsCallback(const DIDEVICEOBJECTINSTANCE* pdidoi, VOID* pContext)
+{
+	DIPROPRANGE propRange;
+	propRange.diph.dwSize = sizeof(DIPROPRANGE);
+	propRange.diph.dwHeaderSize = sizeof(DIPROPHEADER);
+	propRange.diph.dwHow = DIPH_BYID;
+	propRange.diph.dwObj = pdidoi->dwType;
+	propRange.lMin = -32768;
+	propRange.lMax = +32768;
+
+	if (FAILED(currentDevice->SetProperty(DIPROP_RANGE, &propRange.diph)))
+	{
+		std::cout << "Failed to set axis " << pdidoi->wDesignatorIndex << " range." << std::endl;
+		return DIENUM_STOP;
+	}
+
+	return DIENUM_CONTINUE;
+}
 
 BOOL CALLBACK DirectInput::EnumJoysticksCallback(const DIDEVICEINSTANCE* instance, VOID* context)
 {
 	LPDIRECTINPUTDEVICE8 device;
-	HRESULT res = directInput->CreateDevice(instance->guidInstance, &device, NULL);
+
+	std::string instanceGUID = GUIDToString(instance->guidInstance.Data1, instance->guidInstance.Data2, instance->guidInstance.Data3, instance->guidInstance.Data4);
+	std::string productGUID = GUIDToString(instance->guidProduct.Data1, instance->guidProduct.Data2, instance->guidProduct.Data3, instance->guidProduct.Data4);
 	
+	std::wcout << "Name: " << instance->tszProductName << "." << std::endl;
+	std::cout << "Instance GUID: " << instanceGUID << "." << std::endl;
+	std::cout << "Product GUID: " << productGUID << "." << std::endl;
+
+	HRESULT res = directInput->CreateDevice(instance->guidInstance, &device, NULL);
+
 	if (!FAILED(res))
 	{
-		std::stringstream guidString;
+		currentDevice = device;
 
-		guidString << std::hex << std::setfill('0') << std::setw(8) << instance->guidProduct.Data1 << "-";
-		guidString << std::setw(4) << instance->guidProduct.Data2 << "-";
-		guidString << std::setw(4) << instance->guidProduct.Data3 << "-";
+		if (FAILED(device->EnumObjects(EnumObjectsCallback, NULL, DIDFT_AXIS)))
+		{
+			std::cout << "Failed to enum controller objects." << std::endl;
+			return DIENUM_CONTINUE;
+		}
 
-		for (int i = 0; i < 2; i++)
-			guidString << std::setw(2) << +instance->guidProduct.Data4[i];
-
-		guidString << "-";
-
-		for(int i = 2; i < 8; i++)
-			guidString << std::setw(2) << +instance->guidProduct.Data4[i];
-			
-		std::wcout << L"Found device: \"" << instance->tszProductName;
-		std::cout << "\". GUID: " << guidString.str() << std::endl;
-
-		devices.emplace(guidString.str(), device);
-
+		devices.push_back(std::make_tuple(productGUID, instanceGUID, device));
 		return DIENUM_CONTINUE;
 	}
 
@@ -47,14 +65,21 @@ void DirectInput::RefreshDeviceList()
 	directInput->EnumDevices(DI8DEVCLASS_GAMECTRL, EnumJoysticksCallback, nullptr, DIEDFL_ATTACHEDONLY);
 }
 
-LPDIRECTINPUTDEVICE8 DirectInput::FindDevice(std::string guid)
+LPDIRECTINPUTDEVICE8 DirectInput::FindDevice(std::string instanceGUID, std::string productGUID)
 {
-	const auto device = devices.find(guid);
+	for (const auto& device : devices)
+	{
+		std::string currentProductGUID = std::get<0>(device);
+		std::string currentinstanceGUID = std::get<1>(device);
 
-	if (device != devices.end())
-		return device->second;
-	else
-		return nullptr;
+		std::cout << "Checking against " << currentProductGUID << ", " << currentinstanceGUID << std::endl;
+
+		if (currentProductGUID == productGUID || currentinstanceGUID == instanceGUID)
+			return std::get<2>(device);
+	}
+		
+
+	return nullptr;
 }
 
 bool DirectInput::InitializeDevice(LPDIRECTINPUTDEVICE8 device)
@@ -76,6 +101,25 @@ bool DirectInput::InitializeDevice(LPDIRECTINPUTDEVICE8 device)
 	}
 
 	return true;
+}
+
+std::string DirectInput::GUIDToString(const uint64_t& data1, const uint16_t& data2, const uint16_t& data3, const unsigned char* data4)
+{
+	std::stringstream guidString;
+
+	guidString << std::hex << std::setfill('0') << std::setw(8) << data1 << "-";
+	guidString << std::setw(4) << data2 << "-";
+	guidString << std::setw(4) << data3 << "-";
+
+	for (int i = 0; i < 2; i++)
+		guidString << std::setw(2) << +data4[i];
+
+	guidString << "-";
+
+	for (int i = 2; i < 8; i++)
+		guidString << std::setw(2) << +data4[i];
+
+	return guidString.str();
 }
 
 bool DirectInput::Init()

@@ -8,9 +8,16 @@ using SharpDX.DirectInput;
 
 namespace di2xinput
 {
-    static class DIManager
+    public static class DIManager
     {
-        private static Dictionary<Guid, Joystick> gamepads = new Dictionary<Guid, Joystick>();
+        public class GamepadEntry
+        {
+            public Joystick joystick;
+            public Guid productGUID;
+            public Guid instanceGUID;
+        }
+        
+        private static List<GamepadEntry> gamepads = new List<GamepadEntry>();
 
         private static DirectInput di;
 
@@ -24,37 +31,40 @@ namespace di2xinput
             gamepads.Clear();
 
             foreach(DeviceInstance dev in di.GetDevices(DeviceClass.GameControl, DeviceEnumerationFlags.AttachedOnly))
-                gamepads.Add(dev.ProductGuid, new Joystick(di, dev.ProductGuid));
+            {
+                gamepads.Add(new GamepadEntry()
+                {
+                    instanceGUID = dev.InstanceGuid,
+                    productGUID = dev.ProductGuid,
+                    joystick = new Joystick(di, dev.ProductGuid)
+                });
+            }
+                
         }
 
-        public static List<Joystick> GetGamepads()
+        public static List<GamepadEntry> GetGamepads()
         {
             SearchDevices();
-            return gamepads.Select(x => x.Value).ToList();
+            return gamepads;
         }
         
-        public static Guid GetGamepadIDFromName(string name)
+        public static GamepadEntry GetGamepadFromName(string name)
         {
             SearchDevices();
 
-            var result = gamepads.Where(x => x.Value.Properties.ProductName == name);
+            var result = gamepads.Where(x => x.joystick.Properties.ProductName == name);
 
             if (result.Count() > 0)
-                return result.ToList()[0].Key;
+                return result.ToList()[0];
             else
-                return Guid.Empty;
+                return null;
         }
 
-        public static Joystick GetJoystickFromID(string id)
+        public static GamepadEntry GetGamepadFromGUIDs(string productGUID, string instanceGUID)
         {
             SearchDevices();
 
-            var guid = new Guid(id);
-
-            if(gamepads.ContainsKey(guid))
-                return gamepads[guid];
-            else
-                return null;
+            return gamepads.FirstOrDefault(x => x.productGUID.ToString() == productGUID.ToString() || x.instanceGUID.ToString() == instanceGUID.ToString());
         }
 
         public static string GetNameFromMapping(ushort mapping)

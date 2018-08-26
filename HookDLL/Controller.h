@@ -18,17 +18,27 @@ public:
 	Controller();
 	~Controller() = default;
 
-	void AssignDIDevice(const std::string& guid, DEVICE_TYPE type, const std::vector<uint16_t>& mappings);
+	void AssignDIDevice(const std::string& instanceGUID, const std::string& productGUID, DEVICE_TYPE type, const std::vector<uint16_t>& mappings);
 	bool IsConnected();
-	bool Acquire();
-	bool Unacquire();
+	HRESULT Acquire();
+	HRESULT Unacquire();
 
 	XINPUT_GAMEPAD GetState();
 	DEVICE_TYPE GetType() { return type; };
 
 private:
+
+	typedef struct
+	{
+		int negativeX;
+		int positiveX;
+		int negativeY;
+		int positiveY;
+	} ANALOG_SUBVALUES;
+
 	std::array<std::unique_ptr<DIBinding>, 24> bindings;
-	std::string deviceGuid;
+	std::string instanceGUID;
+	std::string productGUID;
 	XINPUT_GAMEPAD gamepad;
 	DEVICE_TYPE type;
 	LPDIRECTINPUTDEVICE8 DIDevice;
