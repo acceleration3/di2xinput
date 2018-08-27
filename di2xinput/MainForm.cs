@@ -30,6 +30,10 @@ namespace di2xinput
             ProgramManager.LoadEntries();
             ProfileManager.ReloadProfiles();
 
+            for (int i = 0; i < ProgramManager.entries.programs.Count; i++)
+                if (!ProfileManager.profiles.Any(x => x.Key == ProgramManager.entries.programs[i].profile))
+                    ProgramManager.entries.programs.RemoveAt(i);
+
             ProfileCombo_DropDown(null, null);
             DeviceCombo_DropDown(null, null);
 
@@ -55,6 +59,16 @@ namespace di2xinput
 
         private void DeviceCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
+            for (int i = 0; i < 24; i++)
+                ProfileManager.activeProfile.controllers[currentIndex].mapping[i] = 0;
+
+            ChangeDeviceType();
+
+            UpdateMappingGrid();
+        }
+
+        private void ChangeDeviceType()
+        {
             if (DeviceCombo.SelectedItem.ToString() == "None")
             {
                 ProfileManager.activeProfile.controllers[currentIndex].deviceType = Mapping.MappedDeviceType.None;
@@ -64,6 +78,7 @@ namespace di2xinput
             {
                 ProfileManager.activeProfile.controllers[currentIndex].deviceType = Mapping.MappedDeviceType.Keyboard;
                 selectedGamepad = null;
+
             }
             else
             {
@@ -76,8 +91,6 @@ namespace di2xinput
 
                 selectedGamepad = gamepad;
             }
-
-            UpdateMappingGrid();
         }
 
         private void DeviceCombo_DropDown(object sender, EventArgs e)
@@ -122,6 +135,7 @@ namespace di2xinput
 
         private void ProfileCombo_DropDown(object sender, EventArgs e)
         {
+            ProfileManager.ReloadProfiles();
             ProfileCombo.Items.Clear();
 
             foreach (var profile in ProfileManager.profiles)
@@ -136,6 +150,7 @@ namespace di2xinput
             {
                 ProfileManager.activeProfile = profile;
                 UpdateDeviceCombo();
+                ChangeDeviceType();
                 UpdateMappingGrid();
             }
                 
@@ -148,6 +163,9 @@ namespace di2xinput
                 ProfileManager.SaveCurrentProfile(ProfileCombo.Text);
                 ProfileManager.ReloadProfiles();
                 UpdateEntryList();
+
+                foreach(ProgramManager.ProgramEntry entry in ProgramManager.entries.programs.Where(x => x.profile == ProfileCombo.Text))
+                    entry.ApplyConfig();
             }
         }
 
@@ -276,6 +294,8 @@ namespace di2xinput
 
         private void UpdateDeviceCombo()
         {
+            DeviceCombo.SelectedIndexChanged -= new EventHandler(DeviceCombo_SelectedIndexChanged);
+
             if (ProfileManager.activeProfile.controllers[currentIndex].deviceType == Mapping.MappedDeviceType.None)
             { 
                 DeviceCombo.Text = "None";
@@ -298,6 +318,8 @@ namespace di2xinput
                     ProfileManager.activeProfile.controllers[currentIndex].deviceType = Mapping.MappedDeviceType.None;
                 }
             }
+
+            DeviceCombo.SelectedIndexChanged += new EventHandler(DeviceCombo_SelectedIndexChanged);
         }
 
         private Tuple<int, string> GetXInputVersion(string filename, int entryIndex)
