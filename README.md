@@ -9,3 +9,6 @@ This tool is designed to convert DirectInput controller commands or keyboard inp
 - Uses a per-game configuration basis so different input configurations can be used for different games.
 - Different devices can be configured for different players including keyboard inputs.
 - All configurations can be changed within the program itself without the need for multiple copies of the program.
+
+## Download:
+[Binaries/Source code](https://github.com/acceleration3/di2xinput/releases)
